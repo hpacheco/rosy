@@ -64,7 +64,7 @@ robotVelocity st = do
 
 robotPhysics :: WorldState -> Node ThreadId
 robotPhysics w = liftIO $ do
-    let st = robot w
+    let st = worldRobot w
     go <- rateLimiter robotFrequency $ atomically $ do
         o <- readTVar (odom st)
         -- TODO: fazer coisas
@@ -122,7 +122,7 @@ robotCliffs st = do
 
 runRobot :: WorldState -> Node [ThreadId]
 runRobot w = do
-    let st = robot w
+    let st = worldRobot w
     t0 <- robotSound st
     t1 <- robotLed1 st
     t2 <- robotLed2 st

@@ -10,6 +10,7 @@ import Ros.Geometry_msgs.Twist as Twist
 
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Window as W
+
 import Control.Concurrent.STM
 
 import Lens.Family (over)
@@ -22,7 +23,8 @@ drawIO :: WorldState -> IO Picture
 drawIO w = do
     wdw1 <- mapM (mapM drawCellIO) (worldMap w)
     wdw2 <- drawBotIO (worldRobot w)
-    return $ W.many [W.vhs wdw1,wdw2] (worldDisplay w)
+    d <- W.displayDimension $ worldDisplay w
+    return $ W.many [W.vhs wdw1,wdw2] d
 
 drawCellIO :: Cell -> IO Window
 drawCellIO = undefined
@@ -49,11 +51,11 @@ keyStateToBool Down = True
 keyStateToBool Up = False
 
 reactButton :: (RobotState -> RobotEventState) -> KeyState -> WorldState -> IO WorldState
-reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ robot w) (keyStateToBool kst) >> return w
+reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ worldRobot w) (keyStateToBool kst) >> return w
 
 -- Values taken from the kobuki_keyop
 changeVel :: SpecialKey -> WorldState -> IO WorldState
-changeVel k w = atomically $ modifyTVar (vel $ robot w) chg >> return w
+changeVel k w = atomically $ modifyTVar (vel $ worldRobot w) chg >> return w
     where
     chg = case k of
         KeyUp    -> over (Twist.linear  . Vector3.x) (\x -> x+0.05)

@@ -21,6 +21,8 @@ import Data.Typeable
 import GHC.Generics as G
 import GHC.Conc
 
+import Graphics.Gloss
+
 data WorldState = WorldState
     { worldDisplay :: Display
     , worldMap :: Map

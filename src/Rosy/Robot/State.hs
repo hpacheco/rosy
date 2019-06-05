@@ -21,6 +21,7 @@ import Data.Typeable
 import Data.Default.Generics as D
 import GHC.Generics as G
 import GHC.Conc
+import Lens.Family (over,set)
 
 data RobotEventState = RobotEventState
     { robotEventState   :: TVar Bool -- internal state
@@ -53,7 +54,7 @@ newRobotState pose = atomically $ do
     led2 <- newTVar $ D.def
     
     vel <- newTVar $ D.def
-    odom <- newTVar $ over (Odometry._pose . PoseWithCovariance._pose) D.def
+    odom <- newTVar $ set (Odometry.pose . PoseWithCovariance.pose) pose D.def
     
     buttonState0 <- newTVar False
     buttonTrigger0 <- newEmptyTMVar
