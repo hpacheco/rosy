@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, TemplateHaskell #-}
 
 module Rosy.Robot.State where
 
@@ -21,40 +21,45 @@ import Data.Typeable
 import Data.Default.Generics as D
 import GHC.Generics as G
 import GHC.Conc
+import Lens.Family.TH
 import Lens.Family (over,set)
 
 data RobotEventState = RobotEventState
-    { robotEventState   :: TVar Bool -- internal state
-    , robotEventTrigger :: TMVar Bool -- trigger when pressed/released
+    { _robotEventState   :: TVar Bool -- internal state
+    , _robotEventTrigger :: TMVar Bool -- trigger when pressed/released
     } deriving (Typeable, G.Generic)
+
+$(makeLenses ''RobotEventState)
 
 -- frequency of the physics engine
 robotFrequency :: Double
 robotFrequency = 60
 
 data RobotState = RobotState
-    { led1      :: TVar Led
-    , led2      :: TVar Led
-    , vel       :: TVar Twist -- desired velocity
-    , odom      :: TVar Odometry
-    , button0   :: RobotEventState
-    , button1   :: RobotEventState
-    , button2   :: RobotEventState
-    , bumperL   :: RobotEventState
-    , bumperC   :: RobotEventState
-    , bumperR   :: RobotEventState
-    , cliffL    :: RobotEventState
-    , cliffC    :: RobotEventState
-    , cliffR    :: RobotEventState
+    { _led1      :: TVar Led
+    , _led2      :: TVar Led
+    , _vel       :: TVar Twist -- desired velocity
+    , _odom      :: TVar Odometry
+    , _button0   :: RobotEventState
+    , _button1   :: RobotEventState
+    , _button2   :: RobotEventState
+    , _bumperL   :: RobotEventState
+    , _bumperC   :: RobotEventState
+    , _bumperR   :: RobotEventState
+    , _cliffL    :: RobotEventState
+    , _cliffC    :: RobotEventState
+    , _cliffR    :: RobotEventState
     } deriving (Typeable, G.Generic)
 
-newRobotState :: Pose -> IO RobotState
-newRobotState pose = atomically $ do
+$(makeLenses ''RobotState)
+
+newRobotState :: IO RobotState
+newRobotState = atomically $ do
     led1 <- newTVar $ D.def
     led2 <- newTVar $ D.def
     
     vel <- newTVar $ D.def
-    odom <- newTVar $ set (Odometry.pose . PoseWithCovariance.pose) pose D.def
+    odom <- newTVar $ D.def
     
     buttonState0 <- newTVar False
     buttonTrigger0 <- newEmptyTMVar
@@ -90,8 +95,8 @@ newRobotState pose = atomically $ do
 
 changeRobotEventState :: RobotEventState -> Bool -> STM ()
 changeRobotEventState st isPressedNew = do
-    writeTVar (robotEventState st) isPressedNew 
-    putTMVar (robotEventTrigger st) isPressedNew
+    writeTVar (_robotEventState st) isPressedNew 
+    putTMVar (_robotEventTrigger st) isPressedNew
 
 
 
