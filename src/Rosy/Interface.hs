@@ -21,5 +21,7 @@ startNode n w = runNode "rosy-simulator" $ do
     liftIO $ forM_ threads killThread
     liftIO $ shutdown
 
-simulate :: Node () -> WorldState -> IO ()
-simulate n w = concurrently_ (startNode n w) (runViewer w)
+simulate :: Node () -> IO ()
+simulate n = do
+    w <- newWorldState
+    concurrently_ (startNode n w) (runViewer w)

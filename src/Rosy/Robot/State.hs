@@ -2,6 +2,8 @@
 
 module Rosy.Robot.State where
 
+import qualified Rosy.Controller.Kobuki as Controller
+
 import Ros.Node
 import Ros.Rate
 import Ros.Topic as Topic hiding (fst,snd)
@@ -17,6 +19,7 @@ import Ros.Geometry_msgs.PoseWithCovariance as PoseWithCovariance
 import Ros.Geometry_msgs.Pose as Pose
 
 import Control.Concurrent.STM
+import Control.Monad
 import Data.Typeable
 import Data.Default.Generics as D
 import GHC.Generics as G
@@ -36,22 +39,28 @@ robotFrequency :: Double
 robotFrequency = 60
 
 data RobotState = RobotState
-    { _led1      :: TVar Led
-    , _led2      :: TVar Led
-    , _vel       :: TVar Twist -- desired velocity
-    , _odom      :: TVar Odometry
-    , _button0   :: RobotEventState
-    , _button1   :: RobotEventState
-    , _button2   :: RobotEventState
-    , _bumperL   :: RobotEventState
-    , _bumperC   :: RobotEventState
-    , _bumperR   :: RobotEventState
-    , _cliffL    :: RobotEventState
-    , _cliffC    :: RobotEventState
-    , _cliffR    :: RobotEventState
+    { _robotLed1      :: TVar Led
+    , _robotLed2      :: TVar Led
+    , _robotVel       :: TVar Twist -- desired velocity
+    , _robotOdom      :: TVar Odometry
+    , _robotButton0   :: RobotEventState
+    , _robotButton1   :: RobotEventState
+    , _robotButton2   :: RobotEventState
+    , _robotBumperL   :: RobotEventState
+    , _robotBumperC   :: RobotEventState
+    , _robotBumperR   :: RobotEventState
+    , _robotCliffL    :: RobotEventState
+    , _robotCliffC    :: RobotEventState
+    , _robotCliffR    :: RobotEventState
     } deriving (Typeable, G.Generic)
 
 $(makeLenses ''RobotState)
+
+_robotOrientation :: RobotState -> IO Double
+_robotOrientation st = atomically $ do
+    o <- readTVar $ _robotOdom st
+    let angz = (Controller.rotZ . Controller.orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) o
+    return angz
 
 newRobotState :: IO RobotState
 newRobotState = atomically $ do

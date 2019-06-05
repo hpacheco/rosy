@@ -40,82 +40,82 @@ playSound i = do
     soundCodeToFile 5 = "cleaningstart.wav"
     soundCodeToFile 6 = "cleanindend.wav"
 
-robotSound :: RobotState -> Node ThreadId
-robotSound st = do
+readRobotSound :: RobotState -> Node ThreadId
+readRobotSound st = do
     sound <- subscribe "/mobile-base/commands/sound"
     flip runHandler sound $ \soundcode -> playSound (soundcode)
 
-robotLed1 :: RobotState -> Node ThreadId
-robotLed1 st = do
+readRobotLed1 :: RobotState -> Node ThreadId
+readRobotLed1 st = do
     led <- subscribe "/mobile-base/commands/led1"
-    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_led1 st) ledcolor
+    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_robotLed1 st) ledcolor
 
-robotLed2 :: RobotState -> Node ThreadId
-robotLed2 st = do
+readRobotLed2 :: RobotState -> Node ThreadId
+readRobotLed2 st = do
     led <- subscribe "/mobile-base/commands/led2"
-    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_led2 st) ledcolor
+    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_robotLed2 st) ledcolor
 
-robotVelocity :: RobotState -> Node ThreadId
-robotVelocity st = do
+readRobotVelocity :: RobotState -> Node ThreadId
+readRobotVelocity st = do
     v <- subscribe "/mobile-base/commands/velocity"
-    flip runHandler v $ \twist -> atomically $ writeTVar (_vel st) twist
+    flip runHandler v $ \twist -> atomically $ writeTVar (_robotVel st) twist
 
 -- ** Physics Engine
 
-robotPhysics :: WorldState -> Node ThreadId
-robotPhysics w = liftIO $ do
+runRobotPhysics :: WorldState -> Node ThreadId
+runRobotPhysics w = liftIO $ do
     let st = _worldRobot w
     go <- rateLimiter robotFrequency $ atomically $ do
-        o <- readTVar (_odom st)
+        o <- readTVar (_robotOdom st)
         -- TODO: fazer coisas
         -- this, for instance, should set the press/release bumper and cliff MVars whenever they change 0->1 and 1->0
-        writeTVar (_odom st) o
+        writeTVar (_robotOdom st) o
     forkIO go
 
 -- ** Robot Outputs
     
-robotOdometry :: RobotState -> Node ()
-robotOdometry st = do
-    advertise "odom" $ topicRate 1 $ repeatM $ atomically $ readTVar (_odom st)
+writeRobotOdometry :: RobotState -> Node ()
+writeRobotOdometry st = do
+    advertise "odom" $ topicRate 1 $ repeatM $ atomically $ readTVar (_robotOdom st)
 
-robotButtons :: RobotState -> Node ()
-robotButtons st = do
+writeRobotButtons :: RobotState -> Node ()
+writeRobotButtons st = do
     let robotButtonTrigger0 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _button0 st)
+            b <- takeTMVar (_robotEventTrigger $ _robotButton0 st)
             return $ ButtonEvent button_Button0 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     let robotButtonTrigger1 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _button1 st)
+            b <- takeTMVar (_robotEventTrigger $ _robotButton1 st)
             return $ ButtonEvent button_Button1 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     let robotButtonTrigger2 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _button2 st)
+            b <- takeTMVar (_robotEventTrigger $ _robotButton2 st)
             return $ ButtonEvent button_Button2 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     advertise "/mobile-base/events/button" $ Topic.mergeList
         [robotButtonTrigger0,robotButtonTrigger1,robotButtonTrigger2]
 
-robotBumpers :: RobotState -> Node ()
-robotBumpers st = do
+writeRobotBumpers :: RobotState -> Node ()
+writeRobotBumpers st = do
     let robotBumperTriggerL = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _bumperL st)
+            b <- takeTMVar (_robotEventTrigger $ _robotBumperL st)
             return $ BumperEvent bumper_LEFT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     let robotBumperTriggerC = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _bumperC st)
+            b <- takeTMVar (_robotEventTrigger $ _robotBumperC st)
             return $ BumperEvent bumper_CENTER (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     let robotBumperTriggerR = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _bumperR st)
+            b <- takeTMVar (_robotEventTrigger $ _robotBumperR st)
             return $ BumperEvent bumper_RIGHT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     advertise "/mobile-base/events/bumper" $ Topic.mergeList
         [robotBumperTriggerL,robotBumperTriggerC,robotBumperTriggerR]
 
-robotCliffs :: RobotState -> Node ()
-robotCliffs st = do
+writeRobotCliffs :: RobotState -> Node ()
+writeRobotCliffs st = do
     let robotCliffTriggerL = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _cliffL st)
+            b <- takeTMVar (_robotEventTrigger $ _robotCliffL st)
             return $ CliffEvent CliffEvent.sensor_LEFT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     let robotCliffTriggerC = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _cliffC st)
+            b <- takeTMVar (_robotEventTrigger $ _robotCliffC st)
             return $ CliffEvent CliffEvent.sensor_CENTER (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     let robotCliffTriggerR = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _cliffR st)
+            b <- takeTMVar (_robotEventTrigger $ _robotCliffR st)
             return $ CliffEvent CliffEvent.sensor_RIGHT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     advertise "/mobile-base/events/cliff" $ Topic.mergeList
         [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
@@ -123,15 +123,15 @@ robotCliffs st = do
 runRobot :: WorldState -> Node [ThreadId]
 runRobot w = do
     let st = _worldRobot w
-    t0 <- robotSound st
-    t1 <- robotLed1 st
-    t2 <- robotLed2 st
-    t3 <- robotVelocity st
-    t4 <- robotPhysics w
-    robotOdometry st
-    robotButtons st
-    robotBumpers st
-    robotCliffs st
+    t0 <- readRobotSound st
+    t1 <- readRobotLed1 st
+    t2 <- readRobotLed2 st
+    t3 <- readRobotVelocity st
+    t4 <- runRobotPhysics w
+    writeRobotOdometry st
+    writeRobotButtons st
+    writeRobotBumpers st
+    writeRobotCliffs st
     return [t0,t1,t2,t3,t4]
     
 -- | Robot maximum translational velocity cm/s
