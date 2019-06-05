@@ -1,0 +1,6 @@
+[submodule "packages/roshask"]
+	path = packages/roshask
+	url = https://github.com/hpacheco/roshask
+[submodule "packages/gloss-window"]
+	path = packages/gloss-window
+	url = https://github.com/hpacheco/gloss-window
