@@ -8,12 +8,14 @@ import Rosy.Viewer.State
 
 import Ros.Geometry_msgs.Vector3 as Vector3
 import Ros.Geometry_msgs.Twist as Twist
+import Ros.Kobuki_msgs.Led as Led
 
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Window (Window(..),Dimension(..))
 import qualified Graphics.Gloss.Window as W
 
 import Control.Concurrent.STM
+import Control.Monad
 
 import Lens.Family (over,set)
 
@@ -52,8 +54,38 @@ scalePx w cm (dx,dy) = px
 drawMenuIO :: WorldState -> IO Window
 drawMenuIO w = return $ Color menuColor . W.rectangleSolid
 
+ledColor :: Led -> Color
+ledColor l = case Led._value l of
+    0 -> black
+    1 -> green
+    2 -> orange
+    3 -> red
+    
 drawBotIO :: WorldState -> IO Window
 drawBotIO w = do
+    let mkLed1 = do
+            c <- liftM ledColor $ atomically $ readTVar (_robotLed1 $ _worldRobot w)
+            return $ \r -> Translate (-r*1/3) (r*3/4) $ Color c $ circleSolid (r/10)
+    let mkLed2 = do
+            c <- liftM ledColor $ atomically $ readTVar (_robotLed2 $ _worldRobot w)
+            return $ \r -> Translate (-r*1/3) (r*2/4) $ Color c $ circleSolid (r/10)
+    l1 <- mkLed1
+    l2 <- mkLed2
+    let mkButton0 = do
+            isOn <- atomically $ readTVar (_robotEventState . _robotButton0 $ _worldRobot w)
+            let c = if isOn then bumperOnColor else bumperOffColor
+            return $ \r -> Translate (-r*1/3) (-r*1/4) $ Color c $ rectangleSolid (r/5) (r/5)
+    let mkButton1 = do
+            isOn <- atomically $ readTVar (_robotEventState . _robotButton1 $ _worldRobot w)
+            let c = if isOn then bumperOnColor else bumperOffColor
+            return $ \r -> Translate (-r*1/3) (-r*2/4) $ Color c $ rectangleSolid (r/5) (r/5)
+    let mkButton2 = do
+            isOn <- atomically $ readTVar (_robotEventState . _robotButton2 $ _worldRobot w)
+            let c = if isOn then bumperOnColor else bumperOffColor
+            return $ \r -> Translate (-r*1/3) (-r*3/4) $ Color c $ rectangleSolid (r/5) (r/5)
+    bu0 <- mkButton0
+    bu1 <- mkButton1
+    bu2 <- mkButton2
     let mkBumperL = do
             isOn <- atomically $ readTVar (_robotEventState $ _robotBumperL $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
@@ -85,7 +117,7 @@ drawBotIO w = do
     cc <- mkCliffC
     cr <- mkCliffR
     let metal = Color robotColor . circleSolid
-    let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r]
+    let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     ang <- _robotOrientation $ _worldRobot w
     return $ W.rotate (realToFrac (-ang)) robot
