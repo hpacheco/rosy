@@ -4,10 +4,11 @@ module Rosy.Robot.Kobuki where
 
 import Rosy.Robot.State
 import Rosy.Viewer.State
+import qualified Rosy.Controller.Kobuki as Controller
 
 import Ros.Node
 import Ros.Rate
-import Ros.Topic as Topic hiding (fst,snd)
+import Ros.Topic as Topic hiding (fst,snd,forever)
 import Ros.Topic.Util as Topic 
 import Ros.Kobuki_msgs.Led as Led
 import Ros.Kobuki_msgs.Sound as Sound
@@ -15,13 +16,22 @@ import Ros.Kobuki_msgs.BumperEvent as BumperEvent
 import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
 import Ros.Nav_msgs.Odometry as Odometry
+import Ros.Geometry_msgs.Twist as Twist
+import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
+import Ros.Geometry_msgs.Pose as Pose
+import Ros.Geometry_msgs.PoseWithCovariance as PoseWithCovariance
+import Ros.Geometry_msgs.Vector3 as Vector3
+import Ros.Geometry_msgs.Point as Point
 
 import Control.Concurrent.STM
+import Control.Monad
 import Data.Typeable
 import Data.Word as Word
 import GHC.Generics as G
 import GHC.Conc
 import System.Process
+
+import Lens.Family (over,set)
 
 import Paths_rosy
     
@@ -66,11 +76,39 @@ runRobotPhysics :: WorldState -> Node ThreadId
 runRobotPhysics w = liftIO $ do
     let st = _worldRobot w
     go <- rateLimiter robotFrequency $ atomically $ do
+        -- original robot position + velocity
         o <- readTVar (_robotOdom st)
-        -- TODO: fazer coisas
-        -- this, for instance, should set the press/release bumper and cliff MVars whenever they change 0->1 and 1->0
-        writeTVar (_robotOdom st) o
-    forkIO go
+        let vlin = Vector3._x $ Twist._linear $ TwistWithCovariance._twist $ Odometry._twist o
+        let vrot = Vector3._z $ Twist._angular $ TwistWithCovariance._twist $ Odometry._twist o
+        let pos = Pose._position $ PoseWithCovariance._pose $ Odometry._pose o
+        let px = Point._x pos
+        let py = Point._y pos
+        let Controller.Orientation rads = Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o
+        
+        -- acceleration towards desired velocity
+        vel'' <- readTVar (_robotVel st)
+        let vlin'' = Vector3._x $ Twist._linear vel''
+        let vrot'' = Vector3._z $ Twist._angular vel''
+        let alin = min robotMaxLinearAccel (vlin'' - vlin)
+        let arot = min robotMaxRotationalAccel (vrot'' - vrot)
+        
+        -- new robot position + velocity (computes linear and angular velocities separately)
+        let vlin' = vlin + alin 
+        let vrot' = vrot + arot 
+        let rads' = rads + vrot' / robotFrequency
+        let px' = px + vlin' * cos rads' / robotFrequency
+        let py' = py + vlin' * sin rads' / robotFrequency
+        let chgV twist = set (Twist.linear . Vector3.x) vlin'
+                       $ set (Twist.angular . Vector3.z) vrot' twist
+        let chgP pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads')
+                      $ set (Pose.position . Point.x) px'
+                      $ set (Pose.position . Point.y) py' pose
+        writeTVar (_robotOdom st) $
+            over (Odometry.pose . PoseWithCovariance.pose) chgP $
+            over (Odometry.twist . TwistWithCovariance.twist) chgV o
+
+        
+    forkIO $ forever go
 
 -- ** Robot Outputs
     
@@ -134,13 +172,21 @@ runRobot w = do
     writeRobotCliffs st
     return [t0,t1,t2,t3,t4]
     
+-- cm/s2
+robotMaxLinearAccel :: Double
+robotMaxLinearAccel = 20
+
+-- radians/s2
+robotMaxRotationalAccel :: Double
+robotMaxRotationalAccel = 1.35
+    
 -- | Robot maximum translational velocity cm/s
 robotMaxLinearSpeed :: Double
 robotMaxLinearSpeed = 70
 
--- | Robot maximum rotational velocity deg/s
+-- | Robot maximum rotational velocity radians/s
 robotMaxRotationalSpeed :: Double
-robotMaxRotationalSpeed = 180
+robotMaxRotationalSpeed = pi
     
 -- | Robot size in cm.
 robotSize :: Double
@@ -148,6 +194,9 @@ robotSize = 35.15
 robotRadius :: Double
 robotRadius = robotSize / 2
     
+-- frequency of the physics engine
+robotFrequency :: Double
+robotFrequency = 10
     
     
     

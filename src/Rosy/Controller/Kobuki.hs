@@ -91,8 +91,8 @@ instance Published Led2 where
 -- ** Velocity
 
 data Velocity = Velocity
-    { velX :: Double -- linear velocity in the X axis
-    , angZ :: Double -- angular velocity in the Z axis
+    { velX :: Double -- linear velocity in the X axis, in cm/s
+    , angZ :: Double -- angular velocity in the Z axis, in radians/s
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 $(makeLenses ''Velocity)
@@ -127,7 +127,7 @@ instance Subscribed Position where
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
         
 data Orientation = Orientation
-    { rotZ :: Double -- in degrees
+    { rotZ :: Double -- in radians
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLenses ''Orientation)
@@ -137,7 +137,23 @@ instance D.Default Orientation
 radiansToDegrees a = 180 * a / pi
 
 orientationFromROS :: Quaternion -> Orientation
-orientationFromROS (Quaternion x y z w) = Orientation $ radiansToDegrees (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
+orientationFromROS (Quaternion x y z w) = Orientation $ (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
+
+orientationToROS :: Orientation -> Quaternion
+orientationToROS (Orientation yaw) = Quaternion qx qy qz qw
+    where
+    pitch = 0
+    roll = 0
+    cy = cos(yaw * 0.5)
+    sy = sin(yaw * 0.5)
+    cp = cos(pitch * 0.5)
+    sp = sin(pitch * 0.5)
+    cr = cos(roll * 0.5)
+    sr = sin(roll * 0.5)
+    qx = cy * cp * sr - sy * sp * cr
+    qy = sy * cp * sr + cy * sp * cr
+    qz = sy * cp * cr - cy * sp * sr
+    qw = cy * cp * cr + sy * sp * sr
 
 instance Subscribed Orientation where
     subscribed = do

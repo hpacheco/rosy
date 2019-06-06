@@ -15,6 +15,7 @@ import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
 import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Geometry_msgs.Pose as Pose
+import qualified Ros.Geometry_msgs.Point as Point
 
 import Control.Concurrent.STM
 import Data.Typeable
@@ -35,7 +36,6 @@ data WorldState = WorldState
     { _worldDisplay :: Display -- initial gloss display static
     , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
     , _worldMap :: MapState -- static
-    , _worldRobotPosition :: Pose -- position of the robot in cm, using the gloss referential (center of screen (0,0))
     , _worldRobot :: RobotState -- static
     } deriving (Typeable, G.Generic)
     
@@ -46,7 +46,7 @@ newWorldState = do
     let dimension = (800,800)
     let display = InWindow "rosy-simulator" dimension (0,0)
     robotInit <- newRobotState
-    return $ WorldState display dimension mapInit D.def robotInit
+    return $ WorldState display dimension mapInit robotInit
     
 mapInit :: MapState
 mapInit = [[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall,Wall]

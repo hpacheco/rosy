@@ -5,10 +5,16 @@ module Rosy.Viewer.Core where
 import Rosy.Robot.State
 import Rosy.Robot.Kobuki
 import Rosy.Viewer.State
+import qualified Rosy.Controller.Kobuki as Controller
 
 import Ros.Geometry_msgs.Vector3 as Vector3
 import Ros.Geometry_msgs.Twist as Twist
+import qualified Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
+import qualified Ros.Geometry_msgs.Point as Point
+import qualified Ros.Geometry_msgs.Pose as Pose
+import qualified Ros.Geometry_msgs.PoseWithCovariance as PoseWithCovariance
 import Ros.Kobuki_msgs.Led as Led
+import Ros.Nav_msgs.Odometry as Odometry
 
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Window (Window(..),Dimension(..))
@@ -16,6 +22,8 @@ import qualified Graphics.Gloss.Window as W
 
 import Control.Concurrent.STM
 import Control.Monad
+
+import Text.Printf
 
 import Lens.Family (over,set)
 
@@ -25,9 +33,10 @@ runViewer w = do
 
 drawIO :: WorldState -> IO Picture
 drawIO w = do
+    o <- atomically $ readTVar (_robotOdom $ _worldRobot w)
     let wdw1 = map (map drawCell) (_worldMap w)
-    wdw2 <- drawBotIO w
-    wdw3 <- drawMenuIO w
+    wdw2 <- drawBotIO w o
+    wdw3 <- drawMenuIO w o
     return $ W.hR (const 200) (W.many [W.vhsSquare wdw1,wdw2]) wdw3 (_worldDimension w)
 
 floorColor = greyN 0.4
@@ -51,8 +60,30 @@ scalePx w cm (dx,dy) = px
     cellPx = min (realToFrac dx / realToFrac mx) (realToFrac dy / realToFrac my)
     px = (cellPx * cm) / realToFrac mapCellSize
 
-drawMenuIO :: WorldState -> IO Window
-drawMenuIO w = return $ Color menuColor . W.rectangleSolid
+scalePointPx :: WorldState -> (Float,Float) -> Dimension -> (Float,Float)
+scalePointPx w (cmx,cmy) d = (scalePx w cmx d,scalePx w cmy d)
+
+drawMenuIO :: WorldState -> Odometry -> IO Window
+drawMenuIO w o = do
+    
+    -- get status
+    let vlin = Vector3._x $ Twist._linear $ TwistWithCovariance._twist $ Odometry._twist o
+    let vrot = Vector3._z $ Twist._angular $ TwistWithCovariance._twist $ Odometry._twist o
+    let pos = Pose._position $ PoseWithCovariance._pose $ Odometry._pose o
+    let px = Point._x pos
+    let py = Point._y pos
+    let Controller.Orientation rads = Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o
+    
+    -- draw menus
+    let back = Color menuColor . W.rectangleSolid
+    let positionx   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionX: " ++ printf "%.2f" px ++ " cm")
+    let positiony   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionY: " ++ printf "%.2f" py ++ " cm")
+    let orientation = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Orientation: " ++ printf "%.2f" rads ++ " rads")
+    let lvelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" cm/s")
+    let avelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Angular Velocity: " ++ printf "%.2f" vrot ++" rads/s")
+    let info = W.vs [positionx,positiony,orientation,lvelocity,avelocity]
+    
+    return $ W.many [back,info]
 
 ledColor :: Led -> Color
 ledColor l = case Led._value l of
@@ -61,8 +92,8 @@ ledColor l = case Led._value l of
     2 -> orange
     3 -> red
     
-drawBotIO :: WorldState -> IO Window
-drawBotIO w = do
+drawBotIO :: WorldState -> Odometry -> IO Window
+drawBotIO w o = do
     let mkLed1 = do
             c <- liftM ledColor $ atomically $ readTVar (_robotLed1 $ _worldRobot w)
             return $ \r -> Translate (-r*1/3) (r*3/4) $ Color c $ circleSolid (r/10)
@@ -119,8 +150,11 @@ drawBotIO w = do
     let metal = Color robotColor . circleSolid
     let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
-    ang <- _robotOrientation $ _worldRobot w
-    return $ W.rotate (realToFrac (-ang)) robot
+    let pose = PoseWithCovariance._pose $ Odometry._pose o
+    let ang = realToFrac $ Controller.radiansToDegrees $ Controller.rotZ $ Controller.orientationFromROS $ Pose._orientation pose
+    let posx = realToFrac $ Point._x $ Pose._position pose
+    let posy = realToFrac $ Point._y $ Pose._position pose
+    return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
 
 eventIO :: Event -> WorldState -> IO WorldState
 eventIO (EventKey (Char '0') kst _ _) w = reactButton _robotButton0 kst w

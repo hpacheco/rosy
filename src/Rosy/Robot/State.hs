@@ -34,10 +34,6 @@ data RobotEventState = RobotEventState
 
 $(makeLenses ''RobotEventState)
 
--- frequency of the physics engine
-robotFrequency :: Double
-robotFrequency = 60
-
 data RobotState = RobotState
     { _robotLed1      :: TVar Led
     , _robotLed2      :: TVar Led
@@ -56,11 +52,10 @@ data RobotState = RobotState
 
 $(makeLenses ''RobotState)
 
-_robotOrientation :: RobotState -> IO Double
-_robotOrientation st = atomically $ do
+_robotPose :: RobotState -> IO Pose
+_robotPose st = atomically $ do
     o <- readTVar $ _robotOdom st
-    let angz = (Controller.rotZ . Controller.orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) o
-    return angz
+    return $ (PoseWithCovariance._pose . Odometry._pose) o
 
 newRobotState :: IO RobotState
 newRobotState = atomically $ do
