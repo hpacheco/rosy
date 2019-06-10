@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, DeriveGeneric #-}
+{-# LANGUAGE CPP, TemplateHaskell, DeriveGeneric #-}
 
 module Rosy.Viewer.State where
 
@@ -44,11 +44,18 @@ data WorldState = WorldState
     
 $(makeLenses ''WorldState)
     
+newDisplay :: IO Display
+#if defined(ghcjs_HOST_OS)
+newDisplay = getDisplay
+#else
+newDisplay = return $ InWindow "rosy-simulator" (800,800) (0,0)
+#endif
+    
 newWorldState :: IO WorldState
 newWorldState = do
-    let dimension = (800,800)
-    let display = InWindow "rosy-simulator" dimension (0,0)
+    display <- newDisplay
     robotInit <- newRobotState
+    dimension <- displayDimension display
     vel <- newEventState D.def
     return $ WorldState display dimension mapInit robotInit vel
     
