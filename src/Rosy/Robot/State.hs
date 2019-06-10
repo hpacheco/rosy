@@ -27,27 +27,30 @@ import GHC.Conc
 import Lens.Family.TH
 import Lens.Family (over,set)
 
-data RobotEventState = RobotEventState
-    { _robotEventState   :: TVar Bool -- internal state
-    , _robotEventTrigger :: TMVar Bool -- trigger when pressed/released
+
+data EventState a = EventState
+    { _eventState   :: TVar a -- internal state
+    , _eventTrigger :: TMVar a -- trigger when pressed/released
     } deriving (Typeable, G.Generic)
 
-$(makeLenses ''RobotEventState)
+$(makeLenses ''EventState)
+
+type RobotEventState = EventState Bool
 
 data RobotState = RobotState
     { _robotLed1      :: TVar Led
     , _robotLed2      :: TVar Led
     , _robotVel       :: TVar Twist -- desired velocity
     , _robotOdom      :: TVar Odometry
-    , _robotButton0   :: RobotEventState
-    , _robotButton1   :: RobotEventState
-    , _robotButton2   :: RobotEventState
-    , _robotBumperL   :: RobotEventState
-    , _robotBumperC   :: RobotEventState
-    , _robotBumperR   :: RobotEventState
-    , _robotCliffL    :: RobotEventState
-    , _robotCliffC    :: RobotEventState
-    , _robotCliffR    :: RobotEventState
+    , _robotButton0   :: RobotEventState 
+    , _robotButton1   :: RobotEventState 
+    , _robotButton2   :: RobotEventState 
+    , _robotBumperL   :: RobotEventState 
+    , _robotBumperC   :: RobotEventState 
+    , _robotBumperR   :: RobotEventState 
+    , _robotCliffL    :: RobotEventState 
+    , _robotCliffC    :: RobotEventState 
+    , _robotCliffR    :: RobotEventState 
     } deriving (Typeable, G.Generic)
 
 $(makeLenses ''RobotState)
@@ -56,6 +59,12 @@ _robotPose :: RobotState -> IO Pose
 _robotPose st = atomically $ do
     o <- readTVar $ _robotOdom st
     return $ (PoseWithCovariance._pose . Odometry._pose) o
+
+newEventState :: a -> IO (EventState a)
+newEventState def = atomically $ do
+    state <- newTVar def
+    trigger <- newEmptyTMVar
+    return $ EventState state trigger
 
 newRobotState :: IO RobotState
 newRobotState = atomically $ do
@@ -67,41 +76,42 @@ newRobotState = atomically $ do
     
     buttonState0 <- newTVar False
     buttonTrigger0 <- newEmptyTMVar
-    let button0 = RobotEventState buttonState0 buttonTrigger0
+    let button0 = EventState buttonState0 buttonTrigger0
     buttonState1 <- newTVar False
     buttonTrigger1 <- newEmptyTMVar
-    let button1 = RobotEventState buttonState1 buttonTrigger1
+    let button1 = EventState buttonState1 buttonTrigger1
     buttonState2 <- newTVar False
     buttonTrigger2 <- newEmptyTMVar
-    let button2 = RobotEventState buttonState2 buttonTrigger2
+    let button2 = EventState buttonState2 buttonTrigger2
     
     bumperStateL <- newTVar False
     bumperTriggerL <- newEmptyTMVar
-    let bumperL = RobotEventState bumperStateL bumperTriggerL
+    let bumperL = EventState bumperStateL bumperTriggerL
     bumperStateC <- newTVar False
     bumperTriggerC <- newEmptyTMVar
-    let bumperC = RobotEventState bumperStateC bumperTriggerC
+    let bumperC = EventState bumperStateC bumperTriggerC
     bumperStateR <- newTVar False
     bumperTriggerR <- newEmptyTMVar
-    let bumperR = RobotEventState bumperStateR bumperTriggerR
+    let bumperR = EventState bumperStateR bumperTriggerR
     
     cliffStateL <- newTVar False
     cliffTriggerL <- newEmptyTMVar
-    let cliffL = RobotEventState cliffStateL cliffTriggerL
+    let cliffL = EventState cliffStateL cliffTriggerL
     cliffStateC <- newTVar False
     cliffTriggerC <- newEmptyTMVar
-    let cliffC = RobotEventState cliffStateC cliffTriggerC
+    let cliffC = EventState cliffStateC cliffTriggerC
     cliffStateR <- newTVar False
     cliffTriggerR <- newEmptyTMVar
-    let cliffR = RobotEventState cliffStateR cliffTriggerR
+    let cliffR = EventState cliffStateR cliffTriggerR
     
     return $ RobotState led1 led2 vel odom button0 button1 button2 bumperL bumperC bumperR cliffL cliffC cliffR
 
 changeRobotEventState :: RobotEventState -> Bool -> STM ()
 changeRobotEventState st isPressedNew = do
-    writeTVar (_robotEventState st) isPressedNew 
-    putTMVar (_robotEventTrigger st) isPressedNew
+    writeTVar (_eventState st) isPressedNew 
+    putTMVar (_eventTrigger st) isPressedNew
 
-
+debug :: String -> IO ()
+debug msg = putStrLn msg
 
 

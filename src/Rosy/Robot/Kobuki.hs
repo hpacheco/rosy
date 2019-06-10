@@ -1,10 +1,11 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, ViewPatterns #-}
 
 module Rosy.Robot.Kobuki where
 
 import Rosy.Robot.State
 import Rosy.Viewer.State
 import qualified Rosy.Controller.Kobuki as Controller
+import Rosy.Util
 
 import Ros.Node
 import Ros.Rate
@@ -24,12 +25,15 @@ import Ros.Geometry_msgs.Vector3 as Vector3
 import Ros.Geometry_msgs.Point as Point
 
 import Control.Concurrent.STM
-import Control.Monad
+import Control.Monad as Monad
 import Data.Typeable
 import Data.Word as Word
 import GHC.Generics as G
 import GHC.Conc
 import System.Process
+import Safe
+import Prelude as P
+import Data.Maybe as Maybe
 
 import Lens.Family (over,set)
 
@@ -98,6 +102,11 @@ runRobotPhysics w = liftIO $ do
         let rads' = rads + vrot' / robotFrequency
         let px' = px + vlin' * cos rads' / robotFrequency
         let py' = py + vlin' * sin rads' / robotFrequency
+        
+        -- check if robot hit a wall
+        --let hitWall = any (==Wall) $ robotCells w (px',py')
+        --let (px'',py'') = if hitWall then (px,py) else (px',py')
+        
         let chgV twist = set (Twist.linear . Vector3.x) vlin'
                        $ set (Twist.angular . Vector3.z) vrot' twist
         let chgP pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads')
@@ -107,8 +116,28 @@ runRobotPhysics w = liftIO $ do
             over (Odometry.pose . PoseWithCovariance.pose) chgP $
             over (Odometry.twist . TwistWithCovariance.twist) chgV o
 
-        
     forkIO $ forever go
+
+sensorPos :: Double -> (Double,Double) -> (Double,Double)
+sensorPos rads (px,py) = (px + robotRadius * cos rads,py + robotRadius * sin rads)
+
+posCell :: WorldState -> (Double,Double) -> Maybe Cell
+posCell w p = Monad.join $ fmap (flip atMay $ floor pc) (m `atMay` floor pl)
+    where
+    (pl,pc) = posToMap w p
+    m = _worldMap w
+
+posToMap :: WorldState -> (Double,Double) -> (Double,Double)
+posToMap w (px,py) = (mx/2 + px/mapCellSize ,my/2 - py/mapCellSize)
+    where
+    m = _worldMap w
+    (realToFrac -> mx,realToFrac -> my) = mapSize m
+
+robotCells :: WorldState -> (Double,Double) -> [Cell]
+robotCells w p = Maybe.catMaybes $ map (posCell w) ps
+    where
+    angles = [0,30..360]
+    ps = map (flip sensorPos p) angles
 
 -- ** Robot Outputs
     
@@ -119,13 +148,13 @@ writeRobotOdometry st = do
 writeRobotButtons :: RobotState -> Node ()
 writeRobotButtons st = do
     let robotButtonTrigger0 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotButton0 st)
+            b <- takeTMVar (_eventTrigger $ _robotButton0 st)
             return $ ButtonEvent button_Button0 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     let robotButtonTrigger1 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotButton1 st)
+            b <- takeTMVar (_eventTrigger $ _robotButton1 st)
             return $ ButtonEvent button_Button1 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     let robotButtonTrigger2 = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotButton2 st)
+            b <- takeTMVar (_eventTrigger $ _robotButton2 st)
             return $ ButtonEvent button_Button2 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
     advertise "/mobile-base/events/button" $ Topic.mergeList
         [robotButtonTrigger0,robotButtonTrigger1,robotButtonTrigger2]
@@ -133,13 +162,13 @@ writeRobotButtons st = do
 writeRobotBumpers :: RobotState -> Node ()
 writeRobotBumpers st = do
     let robotBumperTriggerL = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotBumperL st)
+            b <- takeTMVar (_eventTrigger $ _robotBumperL st)
             return $ BumperEvent bumper_LEFT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     let robotBumperTriggerC = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotBumperC st)
+            b <- takeTMVar (_eventTrigger $ _robotBumperC st)
             return $ BumperEvent bumper_CENTER (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     let robotBumperTriggerR = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotBumperR st)
+            b <- takeTMVar (_eventTrigger $ _robotBumperR st)
             return $ BumperEvent bumper_RIGHT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
     advertise "/mobile-base/events/bumper" $ Topic.mergeList
         [robotBumperTriggerL,robotBumperTriggerC,robotBumperTriggerR]
@@ -147,19 +176,19 @@ writeRobotBumpers st = do
 writeRobotCliffs :: RobotState -> Node ()
 writeRobotCliffs st = do
     let robotCliffTriggerL = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotCliffL st)
+            b <- takeTMVar (_eventTrigger $ _robotCliffL st)
             return $ CliffEvent CliffEvent.sensor_LEFT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     let robotCliffTriggerC = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotCliffC st)
+            b <- takeTMVar (_eventTrigger $ _robotCliffC st)
             return $ CliffEvent CliffEvent.sensor_CENTER (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     let robotCliffTriggerR = repeatM $ atomically $ do
-            b <- takeTMVar (_robotEventTrigger $ _robotCliffR st)
+            b <- takeTMVar (_eventTrigger $ _robotCliffR st)
             return $ CliffEvent CliffEvent.sensor_RIGHT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
     advertise "/mobile-base/events/cliff" $ Topic.mergeList
         [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
 
-runRobot :: WorldState -> Node [ThreadId]
-runRobot w = do
+runRobotNodes :: WorldState -> Node [ThreadId]
+runRobotNodes w = do
     let st = _worldRobot w
     t0 <- readRobotSound st
     t1 <- readRobotLed1 st

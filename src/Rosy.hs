@@ -6,6 +6,7 @@ module Rosy
     , module Rosy.Viewer.Core
     , module Rosy.Viewer.State
     , module Rosy.Interface
+    , module Rosy.Util
     ) where
 
 import Rosy.Controller.Core
@@ -15,3 +16,4 @@ import Rosy.Robot.State
 import Rosy.Viewer.Core
 import Rosy.Viewer.State
 import Rosy.Interface
+import Rosy.Util

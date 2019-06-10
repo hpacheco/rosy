@@ -6,6 +6,7 @@ import Rosy.Robot.State
 import Rosy.Robot.Kobuki
 import Rosy.Viewer.State
 import qualified Rosy.Controller.Kobuki as Controller
+import Rosy.Util
 
 import Ros.Geometry_msgs.Vector3 as Vector3
 import Ros.Geometry_msgs.Twist as Twist
@@ -15,6 +16,8 @@ import qualified Ros.Geometry_msgs.Pose as Pose
 import qualified Ros.Geometry_msgs.PoseWithCovariance as PoseWithCovariance
 import Ros.Kobuki_msgs.Led as Led
 import Ros.Nav_msgs.Odometry as Odometry
+import Ros.Node
+import Ros.Topic as Topic
 
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Window (Window(..),Dimension(..))
@@ -22,6 +25,10 @@ import qualified Graphics.Gloss.Window as W
 
 import Control.Concurrent.STM
 import Control.Monad
+
+import Data.Default.Generics as D
+
+import GHC.Conc
 
 import Text.Printf
 
@@ -103,45 +110,45 @@ drawBotIO w o = do
     l1 <- mkLed1
     l2 <- mkLed2
     let mkButton0 = do
-            isOn <- atomically $ readTVar (_robotEventState . _robotButton0 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton0 $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*1/4) $ Color c $ rectangleSolid (r/5) (r/5)
     let mkButton1 = do
-            isOn <- atomically $ readTVar (_robotEventState . _robotButton1 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton1 $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*2/4) $ Color c $ rectangleSolid (r/5) (r/5)
     let mkButton2 = do
-            isOn <- atomically $ readTVar (_robotEventState . _robotButton2 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton2 $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*3/4) $ Color c $ rectangleSolid (r/5) (r/5)
     bu0 <- mkButton0
     bu1 <- mkButton1
     bu2 <- mkButton2
     let mkBumperL = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotBumperL $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperL $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate 15 $ Color c $ thickArc 60 90 r (r/10)
     let mkBumperC = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotBumperC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperC $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate 15 $ Color c $ thickArc 0 30 r (r/10)
     let mkBumperR = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotBumperC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperC $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (-15) $ Color c $ thickArc (-60) (-90) r (r/10)
     bl <- mkBumperL
     bc <- mkBumperC
     br <- mkBumperR
     let mkCliffL = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotCliffL $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffL $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (-60) $ Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     let mkCliffC = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotCliffC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffC $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     let mkCliffR = do
-            isOn <- atomically $ readTVar (_robotEventState $ _robotCliffR $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffR $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (60) $ Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     cl <- mkCliffL
@@ -151,7 +158,7 @@ drawBotIO w o = do
     let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     let pose = PoseWithCovariance._pose $ Odometry._pose o
-    let ang = realToFrac $ Controller.radiansToDegrees $ Controller.rotZ $ Controller.orientationFromROS $ Pose._orientation pose
+    let ang = radiansToDegrees $ realToFrac $ Controller.rotZ $ Controller.orientationFromROS $ Pose._orientation pose
     let posx = realToFrac $ Point._x $ Pose._position pose
     let posy = realToFrac $ Point._y $ Pose._position pose
     return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
@@ -180,16 +187,31 @@ reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ _w
 
 -- Values taken from the kobuki_keyop
 changeVel :: SpecialKey -> WorldState -> IO WorldState
-changeVel k w = atomically $ modifyTVar (_robotVel $ _worldRobot w) chg >> return w
-    where
+changeVel k w = atomically $ do
+    putTMVar (_eventTrigger $ _worldVel w) chg
+    return w
+  where
     chg = case k of
-        KeyUp    -> over (Twist.linear  . Vector3.x) (\x -> x+0.05)
-        KeyDown  -> over (Twist.linear  . Vector3.x) (\x -> x-0.05)
-        KeyLeft  -> over (Twist.angular . Vector3.z) (\x -> x+0.33)
-        KeyRight -> over (Twist.angular . Vector3.z) (\x -> x-0.33)
+        KeyUp    -> over (Controller.velXLens) (\x -> x+0.05) D.def
+        KeyDown  -> over (Controller.velXLens) (\x -> x-0.05) D.def
+        KeyLeft  -> over (Controller.angZLens) (\x -> x+0.33) D.def
+        KeyRight -> over (Controller.angZLens) (\x -> x-0.33) D.def
 
 timeIO :: Float -> WorldState -> IO WorldState
 timeIO t w = return w
 
+writeViewerVelocity :: WorldState -> Node ()
+writeViewerVelocity w = do
+    let viewerVelocityTrigger = Topic.repeatM $ atomically $ do
+            let vel = _worldVel w
+            dv <- takeTMVar (_eventTrigger vel)
+            v <- readTVar (_eventState vel)
+            let v' = v `Controller.addVelocity` dv
+            writeTVar (_eventState vel) v'
+            return $ Controller.velocityToROS v'
+    advertise "/mobile-base/commands/velocity" $ viewerVelocityTrigger
     
+runViewerNodes :: WorldState -> Node ()
+runViewerNodes w = do
+    writeViewerVelocity w
 

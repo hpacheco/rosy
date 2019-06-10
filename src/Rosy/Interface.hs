@@ -16,10 +16,8 @@ import Rosy.Viewer.Core
 startNode :: Node () -> WorldState -> IO ()
 startNode n w = runNode "rosy-simulator" $ do
     n
-    threads <- runRobot w
-    shutdown <- getShutdownAction
-    liftIO $ forM_ threads killThread
-    liftIO $ shutdown
+    runRobotNodes w
+    runViewerNodes w
 
 simulate :: Node () -> IO ()
 simulate n = do

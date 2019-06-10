@@ -21,12 +21,18 @@ Library
                        Rosy.Viewer.Core
                        Rosy.Viewer.State
                        Rosy.Interface
+                       Rosy.Util
                        Rosy
                        Paths_rosy
 
   Build-depends:       base >= 4.5 && < 6,
-                       uuid, lens-family-th, lens-family-core, data-default-generics, stm, async, gloss, gloss-window, process,
-                       roshask, ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs
+                       uuid, lens-family-th, lens-family-core, data-default-generics, stm, async, gloss-window, process, safe,
+                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs
+  if impl(ghcjs)
+    Build-depends:
+                       roshask-local, codeworld-api-gloss
+  else
+    Build-depends:     roshask, gloss
 
   GHC-Options:         -Wall
   Hs-Source-Dirs:      src

@@ -9,7 +9,7 @@ import Data.Word as Word
 import Data.Typeable
 import qualified GHC.Generics as G
 import qualified Data.Default.Generics as D
-import Lens.Family.TH (makeLenses)
+import Lens.Family.TH (makeLensesBy)
 import Lens.Family (view, set)
 
 import Rosy.Controller.Core
@@ -64,7 +64,7 @@ data Led1 = Led1
     { ledColor1 :: Color
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
-$(makeLenses ''Led1)
+$(makeLensesBy (Just . (++"Lens")) ''Led1)
 
 led1ToROS :: Led1 -> Led.Led
 led1ToROS = Led.Led . colorToROS . ledColor1
@@ -78,7 +78,7 @@ data Led2 = Led2
     { ledColor2 :: Color
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
-$(makeLenses ''Led2)
+$(makeLensesBy (Just . (++"Lens")) ''Led2)
 
 led2ToROS :: Led2 -> Led.Led
 led2ToROS = Led.Led . colorToROS . ledColor2
@@ -95,12 +95,18 @@ data Velocity = Velocity
     , angZ :: Double -- angular velocity in the Z axis, in radians/s
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
-$(makeLenses ''Velocity)
+$(makeLensesBy (Just . (++"Lens")) ''Velocity)
 
 instance D.Default Velocity
 
-velocityToROS :: Velocity -> Twist.Twist
-velocityToROS (Velocity vx az) = Twist.Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
+addVelocity :: Velocity -> Velocity -> Velocity
+addVelocity (Velocity vx1 az1) (Velocity vx2 az2) = Velocity (vx1+vx2) (az1+az2)
+
+velocityFromROS :: Twist -> Velocity
+velocityFromROS t = Velocity (Vector3._x $ Twist._linear t) (Vector3._z $ Twist._angular t)
+
+velocityToROS :: Velocity -> Twist
+velocityToROS (Velocity vx az) = Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
 
 instance Published Velocity where
     published t = advertise "/mobile_base/commands/velocity" (fmap velocityToROS t)
@@ -114,7 +120,7 @@ data Position = Position
     , posY :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''Position)
+$(makeLensesBy (Just . (++"Lens")) ''Position)
 
 instance D.Default Position
 
@@ -130,11 +136,9 @@ data Orientation = Orientation
     { rotZ :: Double -- in radians
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''Orientation)
+$(makeLensesBy (Just . (++"Lens")) ''Orientation)
 
 instance D.Default Orientation
-
-radiansToDegrees a = 180 * a / pi
 
 orientationFromROS :: Quaternion -> Orientation
 orientationFromROS (Quaternion x y z w) = Orientation $ (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
@@ -160,9 +164,6 @@ instance Subscribed Orientation where
         odom <- subscribe "odom"
         return $ fmap (orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) odom
         
-velocityFromROS :: Twist -> Velocity
-velocityFromROS t = Velocity (Vector3._x $ Twist._linear t) (Vector3._z $ Twist._angular t)
-        
 instance Subscribed Velocity where
     subscribed = do
         odom <- subscribe "odom"
@@ -174,7 +175,7 @@ data Button0 = Button0
     { but0 :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''Button0)
+$(makeLensesBy (Just . (++"Lens")) ''Button0)
 
 instance D.Default Button0
 
@@ -188,7 +189,7 @@ data Button1 = Button1
     { but1 :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''Button1)
+$(makeLensesBy (Just . (++"Lens")) ''Button1)
 
 instance D.Default Button1
 
@@ -202,7 +203,7 @@ data Button2 = Button2
     { but2 :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''Button2)
+$(makeLensesBy (Just . (++"Lens")) ''Button2)
 
 instance D.Default Button2
 
@@ -218,7 +219,7 @@ data BumperLeft = BumperLeft
     { bumpLeft :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''BumperLeft)
+$(makeLensesBy (Just . (++"Lens")) ''BumperLeft)
 
 instance D.Default BumperLeft
 
@@ -232,7 +233,7 @@ data BumperCenter = BumperCenter
     { bumpCenter :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''BumperCenter)
+$(makeLensesBy (Just . (++"Lens")) ''BumperCenter)
 
 instance D.Default BumperCenter
 
@@ -246,7 +247,7 @@ data BumperRight = BumperRight
     { bumpRight :: Bool -- | 'True' for pressed, 'False' for released
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''BumperRight)
+$(makeLensesBy (Just . (++"Lens")) ''BumperRight)
 
 instance D.Default BumperRight
 
@@ -262,7 +263,7 @@ data CliffLeft = CliffLeft
     { cliffLeft :: Bool -- | 'True' for approaching, 'False' for moving away
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''CliffLeft)
+$(makeLensesBy (Just . (++"Lens")) ''CliffLeft)
 
 instance D.Default CliffLeft
 
@@ -276,7 +277,7 @@ data CliffCenter = CliffCenter
     { cliffCenter :: Bool -- | 'True' for approaching, 'False' for moving away
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''CliffCenter)
+$(makeLensesBy (Just . (++"Lens")) ''CliffCenter)
 
 instance D.Default CliffCenter
 
@@ -290,7 +291,7 @@ data CliffRight = CliffRight
     { cliffRight :: Bool -- | 'True' for approaching, 'False' for moving away
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
-$(makeLenses ''CliffRight)
+$(makeLensesBy (Just . (++"Lens")) ''CliffRight)
 
 instance D.Default CliffRight
 

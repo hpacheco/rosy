@@ -3,6 +3,7 @@
 module Rosy.Viewer.State where
 
 import Rosy.Robot.State
+import qualified Rosy.Controller.Kobuki as Controller
 
 import Ros.Node
 import Ros.Rate
@@ -31,12 +32,14 @@ import Lens.Family (over,set)
 
 type MapState = [[Cell]]
 data Cell = Floor | Wall | Hole
+    deriving (Typeable, G.Generic,Eq)
 
 data WorldState = WorldState
     { _worldDisplay :: Display -- initial gloss display static
     , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
     , _worldMap :: MapState -- static
     , _worldRobot :: RobotState -- static
+    , _worldVel :: EventState Controller.Velocity -- keyop for desired velocity
     } deriving (Typeable, G.Generic)
     
 $(makeLenses ''WorldState)
@@ -46,7 +49,8 @@ newWorldState = do
     let dimension = (800,800)
     let display = InWindow "rosy-simulator" dimension (0,0)
     robotInit <- newRobotState
-    return $ WorldState display dimension mapInit robotInit
+    vel <- newEventState D.def
+    return $ WorldState display dimension mapInit robotInit vel
     
 mapInit :: MapState
 mapInit = [[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall,Wall]
