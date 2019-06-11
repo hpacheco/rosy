@@ -172,7 +172,8 @@ instance Subscribed Velocity where
 -- ** Buttons
         
 data Button0 = Button0
-    { but0 :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      but0 :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button0)
@@ -186,7 +187,8 @@ instance Subscribed Button0 where
         return $ fmap (Button0 . (>0) . ButtonEvent._state) button0
 
 data Button1 = Button1
-    { but1 :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      but1 :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button1)
@@ -200,7 +202,8 @@ instance Subscribed Button1 where
         return $ fmap (Button1 . (>0) . ButtonEvent._state) button1
 
 data Button2 = Button2
-    { but2 :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      but2 :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button2)
@@ -216,7 +219,8 @@ instance Subscribed Button2 where
 -- ** Bumpers
 
 data BumperLeft = BumperLeft
-    { bumpLeft :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      bumpLeft :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperLeft)
@@ -230,7 +234,8 @@ instance Subscribed BumperLeft where
         return $ fmap (BumperLeft . (>0) . BumperEvent._state) bumper
 
 data BumperCenter = BumperCenter
-    { bumpCenter :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      bumpCenter :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperCenter)
@@ -260,7 +265,8 @@ instance Subscribed BumperRight where
 -- ** Cliffs
 
 data CliffLeft = CliffLeft
-    { cliffLeft :: Bool -- | 'True' for approaching, 'False' for moving away
+    { -- | 'True' for approaching, 'False' for moving away
+      cliffLeft :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffLeft)
@@ -274,7 +280,8 @@ instance Subscribed CliffLeft where
         return $ fmap (CliffLeft . (>0) . CliffEvent._state) cliff
 
 data CliffCenter = CliffCenter
-    { cliffCenter :: Bool -- | 'True' for approaching, 'False' for moving away
+    { -- | 'True' for approaching, 'False' for moving away
+      cliffCenter :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffCenter)
@@ -288,7 +295,8 @@ instance Subscribed CliffCenter where
         return $ fmap (CliffCenter . (>0) . CliffEvent._state) cliff
 
 data CliffRight = CliffRight
-    { cliffRight :: Bool -- | 'True' for approaching, 'False' for moving away
+    { -- | 'True' for approaching, 'False' for moving away
+      cliffRight :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffRight)
