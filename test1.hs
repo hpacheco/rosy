@@ -1,4 +1,4 @@
-module Test1 where
+module Main where
     
 import Rosy.Interface
 
