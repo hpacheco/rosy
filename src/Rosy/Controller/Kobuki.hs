@@ -249,7 +249,8 @@ instance Subscribed BumperCenter where
         return $ fmap (BumperCenter . (>0) . BumperEvent._state) bumper
 
 data BumperRight = BumperRight
-    { bumpRight :: Bool -- | 'True' for pressed, 'False' for released
+    { -- | 'True' for pressed, 'False' for released
+      bumpRight :: Bool
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperRight)
