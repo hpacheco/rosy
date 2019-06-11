@@ -26,6 +26,7 @@ import GHC.Conc
 
 import Graphics.Gloss
 import Graphics.Gloss.Window
+import Graphics.Gloss.Interface.Environment
 
 import Lens.Family.TH
 import Lens.Family (over,set)
