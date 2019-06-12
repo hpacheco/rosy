@@ -37,22 +37,32 @@ import Data.Maybe as Maybe
 
 import Lens.Family (over,set)
 
+import System.FilePath
+
+import Graphics.Gloss.Interface.Environment
+
 import Paths_rosy
     
 -- ** Robot inputs
 
+#if defined(ghcjs_HOST_OS)
 playSound :: Sound -> IO ()
 playSound i = do
-    soundPath <- getDataFileName $ soundCodeToFile (Sound._value i)
+    playAudioById $ "sound" ++ show (Sound._value i)
+#else
+playSound :: Sound -> IO ()
+playSound i = do
+    soundPath <- getDataFileName $ "sounds" </> soundCodeToFile (Sound._value i)
     callProcess "play" [soundPath]
-  where
-    soundCodeToFile 0 = "on.wav"
-    soundCodeToFile 1 = "off.wav"
-    soundCodeToFile 2 = "recharge.wav"
-    soundCodeToFile 3 = "button.wav"
-    soundCodeToFile 4 = "error.wav"
-    soundCodeToFile 5 = "cleaningstart.wav"
-    soundCodeToFile 6 = "cleanindend.wav"
+#endif
+
+soundCodeToFile 0 = "on.wav"
+soundCodeToFile 1 = "off.wav"
+soundCodeToFile 2 = "recharge.wav"
+soundCodeToFile 3 = "button.wav"
+soundCodeToFile 4 = "error.wav"
+soundCodeToFile 5 = "cleaningstart.wav"
+soundCodeToFile 6 = "cleanindend.wav"
 
 readRobotSound :: RobotState -> Node ThreadId
 readRobotSound st = do
@@ -62,7 +72,8 @@ readRobotSound st = do
 readRobotLed1 :: RobotState -> Node ThreadId
 readRobotLed1 st = do
     led <- subscribe "/mobile-base/commands/led1"
-    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_robotLed1 st) ledcolor
+    flip runHandler led $ \ledcolor -> do
+        atomically $ writeTVar (_robotLed1 st) ledcolor
 
 readRobotLed2 :: RobotState -> Node ThreadId
 readRobotLed2 st = do

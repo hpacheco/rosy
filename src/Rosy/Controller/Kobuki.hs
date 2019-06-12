@@ -48,7 +48,7 @@ soundToROS :: Sound -> Sound.Sound
 soundToROS = Sound.Sound . toEnum . fromEnum
 
 instance Published Sound where
-    published t = advertise "/mobile_base/commands/sound" (fmap soundToROS t)
+    published t = advertise "/mobile-base/commands/sound" (fmap soundToROS t)
 
 -- ** Leds
 
@@ -72,7 +72,7 @@ led1ToROS = Led.Led . colorToROS . ledColor1
 instance D.Default Led1
 
 instance Published Led1 where
-    published t = advertise "/mobile_base/commands/led1" (fmap led1ToROS t)
+    published t = advertise "/mobile-base/commands/led1" (fmap led1ToROS t)
 
 data Led2 = Led2
     { ledColor2 :: Color
@@ -86,7 +86,7 @@ led2ToROS = Led.Led . colorToROS . ledColor2
 instance D.Default Led2
 
 instance Published Led2 where
-    published t = advertise "/mobile_base/commands/led2" (fmap led2ToROS t)
+    published t = advertise "/mobile-base/commands/led2" (fmap led2ToROS t)
 
 -- ** Velocity
 
@@ -109,7 +109,7 @@ velocityToROS :: Velocity -> Twist
 velocityToROS (Velocity vx az) = Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
 
 instance Published Velocity where
-    published t = advertise "/mobile_base/commands/velocity" (fmap velocityToROS t)
+    published t = advertise "/mobile-base/commands/velocity" (fmap velocityToROS t)
 
 -- * Kobuki publications (see the robot's state)
 
@@ -182,7 +182,7 @@ instance D.Default Button0
 
 instance Subscribed Button0 where
     subscribed = do
-        buttons <- subscribe "/mobile_base/commands/button"
+        buttons <- subscribe "/mobile-base/commands/button"
         let button0 = Topic.filter ((== 0) . ButtonEvent._button) buttons
         return $ fmap (Button0 . (>0) . ButtonEvent._state) button0
 
@@ -197,7 +197,7 @@ instance D.Default Button1
 
 instance Subscribed Button1 where
     subscribed = do
-        buttons <- subscribe "/mobile_base/commands/button"
+        buttons <- subscribe "/mobile-base/commands/button"
         let button1 = Topic.filter ((== 1) . ButtonEvent._button) buttons
         return $ fmap (Button1 . (>0) . ButtonEvent._state) button1
 
@@ -212,7 +212,7 @@ instance D.Default Button2
 
 instance Subscribed Button2 where
     subscribed = do
-        buttons <- subscribe "/mobile_base/commands/button"
+        buttons <- subscribe "/mobile-base/commands/button"
         let button2 = Topic.filter ((== 2) . ButtonEvent._button) buttons
         return $ fmap (Button2 . (>0) . ButtonEvent._state) button2
 
@@ -229,7 +229,7 @@ instance D.Default BumperLeft
 
 instance Subscribed BumperLeft where
     subscribed = do
-        bumpers <- subscribe "/mobile_base/commands/bumper"
+        bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 0) . BumperEvent._bumper) bumpers
         return $ fmap (BumperLeft . (>0) . BumperEvent._state) bumper
 
@@ -244,7 +244,7 @@ instance D.Default BumperCenter
 
 instance Subscribed BumperCenter where
     subscribed = do
-        bumpers <- subscribe "/mobile_base/commands/bumper"
+        bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 1) . BumperEvent._bumper) bumpers
         return $ fmap (BumperCenter . (>0) . BumperEvent._state) bumper
 
@@ -259,7 +259,7 @@ instance D.Default BumperRight
 
 instance Subscribed BumperRight where
     subscribed = do
-        bumpers <- subscribe "/mobile_base/commands/bumper"
+        bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 2) . BumperEvent._bumper) bumpers
         return $ fmap (BumperRight . (>0) . BumperEvent._state) bumper
 
@@ -276,7 +276,7 @@ instance D.Default CliffLeft
 
 instance Subscribed CliffLeft where
     subscribed = do
-        cliffs <- subscribe "/mobile_base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 0) . CliffEvent._sensor) cliffs
         return $ fmap (CliffLeft . (>0) . CliffEvent._state) cliff
 
@@ -291,7 +291,7 @@ instance D.Default CliffCenter
 
 instance Subscribed CliffCenter where
     subscribed = do
-        cliffs <- subscribe "/mobile_base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 1) . CliffEvent._sensor) cliffs
         return $ fmap (CliffCenter . (>0) . CliffEvent._state) cliff
 
@@ -306,7 +306,7 @@ instance D.Default CliffRight
 
 instance Subscribed CliffRight where
     subscribed = do
-        cliffs <- subscribe "/mobile_base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 2) . CliffEvent._sensor) cliffs
         return $ fmap (CliffRight . (>0) . CliffEvent._state) cliff
 
