@@ -45,6 +45,9 @@ import Paths_rosy
     
 -- ** Robot inputs
 
+orNothing :: IO () -> IO ()
+orNothing m = catch m (\(e::SomeException) -> return ())
+
 #if defined(ghcjs_HOST_OS)
 playSound :: Sound -> IO ()
 playSound i = do
@@ -64,10 +67,11 @@ soundCodeToFile 4 = "error.wav"
 soundCodeToFile 5 = "cleaningstart.wav"
 soundCodeToFile 6 = "cleanindend.wav"
 
+-- the sound may play before we load the viewer, issuing a js error
 readRobotSound :: RobotState -> Node ThreadId
 readRobotSound st = do
     sound <- subscribe "/mobile-base/commands/sound"
-    flip runHandler sound $ \soundcode -> playSound (soundcode)
+    flip runHandler sound $ \soundcode -> orNothing $ playSound (soundcode)
 
 readRobotLed1 :: RobotState -> Node ThreadId
 readRobotLed1 st = do
