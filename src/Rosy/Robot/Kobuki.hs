@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, ViewPatterns #-}
+{-# LANGUAGE CPP, DeriveGeneric, ScopedTypeVariables, ViewPatterns #-}
 
 module Rosy.Robot.Kobuki where
 
