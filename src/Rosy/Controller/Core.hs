@@ -9,6 +9,8 @@ import Ros.Node
 import Ros.Topic as Topic
 import Ros.Topic.Util as Topic
 
+import Control.Monad
+
 type Say = IO ()
 
 say :: String -> Say
@@ -21,7 +23,16 @@ instance (Subscribed a,Subscribed b) => Subscribed (a,b) where
     subscribed = do
         a <- subscribed
         b <- subscribed
-        return $ everyNew a b
+        return $ a `everyNew` b
+
+instance (Subscribed a,Subscribed b,Subscribed c) => Subscribed (a,b,c) where
+    subscribed = liftM (fmap (\(a,(b,c)) -> (a,b,c))) subscribed
+
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d) => Subscribed (a,b,c,d) where
+    subscribed = liftM (fmap (\(a,(b,(c,d))) -> (a,b,c,d))) subscribed
+
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e) => Subscribed (a,b,c,d,e) where
+    subscribed = liftM (fmap (\(a,(b,(c,(d,e)))) -> (a,b,c,d,e))) subscribed
 
 instance (Subscribed a,Subscribed b) => Subscribed (Either a b) where
     subscribed = do
@@ -49,6 +60,15 @@ instance (Published a,Published b) => Published (a,b) where
         (ta,tb) <- liftIO $ fmap (Topic.fst >< Topic.snd) $ tee t
         published ta
         published tb
+
+instance (Published a,Published b,Published c) => Published (a,b,c) where
+    published t = published $ fmap (\(a,b,c) -> (a,(b,c))) t
+    
+instance (Published a,Published b,Published c,Published d) => Published (a,b,c,d) where
+    published t = published $ fmap (\(a,b,c,d) -> (a,(b,(c,d)))) t
+    
+instance (Published a,Published b,Published c,Published d,Published e) => Published (a,b,c,d,e) where
+    published t = published $ fmap (\(a,b,c,d,e) -> (a,(b,(c,(d,e))))) t
 
 instance (Published a,Published b) => Published (Either a b) where
     published t = do
