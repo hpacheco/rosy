@@ -41,6 +41,8 @@ import System.FilePath
 
 import Graphics.Gloss.Interface.Environment
 
+import Control.Exception
+
 import Paths_rosy
     
 -- ** Robot inputs
