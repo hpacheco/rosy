@@ -41,6 +41,7 @@ data RobotState = RobotState
     { _robotLed1      :: TVar Led
     , _robotLed2      :: TVar Led
     , _robotVel       :: TVar Twist -- desired velocity
+    , _robotDrag      :: TVar Double -- drag velocity
     , _robotOdom      :: TVar Odometry
     , _robotButton0   :: RobotEventState 
     , _robotButton1   :: RobotEventState 
@@ -51,6 +52,8 @@ data RobotState = RobotState
     , _robotCliffL    :: RobotEventState 
     , _robotCliffC    :: RobotEventState 
     , _robotCliffR    :: RobotEventState 
+    , _robotWheelL    :: RobotEventState 
+    , _robotWheelR    :: RobotEventState 
     } deriving (Typeable, G.Generic)
 
 $(makeLenses ''RobotState)
@@ -72,6 +75,7 @@ newRobotState = atomically $ do
     led2 <- newTVar $ D.def
     
     vel <- newTVar $ D.def
+    vdrag <- newTVar $ D.def
     odom <- newTVar $ D.def
     
     buttonState0 <- newTVar False
@@ -104,7 +108,20 @@ newRobotState = atomically $ do
     cliffTriggerR <- newEmptyTMVar
     let cliffR = EventState cliffStateR cliffTriggerR
     
-    return $ RobotState led1 led2 vel odom button0 button1 button2 bumperL bumperC bumperR cliffL cliffC cliffR
+    wheelStateL <- newTVar False
+    wheelTriggerL <- newEmptyTMVar
+    let wheelL = EventState wheelStateL wheelTriggerL
+    wheelStateR <- newTVar False
+    wheelTriggerR <- newEmptyTMVar
+    let wheelR = EventState wheelStateR wheelTriggerR
+    
+    return $ RobotState
+        led1 led2
+        vel vdrag odom
+        button0 button1 button2
+        bumperL bumperC bumperR
+        cliffL cliffC cliffR
+        wheelL wheelR
 
 changeRobotEventState :: RobotEventState -> Bool -> STM ()
 changeRobotEventState st isPressedNew = do

@@ -27,6 +27,7 @@ import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.BumperEvent as BumperEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
+import Ros.Kobuki_msgs.WheelDropEvent as WheelDropEvent
 import qualified Ros.Kobuki_msgs.Sound as Sound
 import qualified Ros.Kobuki_msgs.Led as Led
 
@@ -91,8 +92,8 @@ instance Published Led2 where
 -- ** Velocity
 
 data Velocity = Velocity
-    { velX :: Double -- linear velocity in the X axis, in cm/s
-    , angZ :: Double -- angular velocity in the Z axis, in radians/s
+    { velocityLinear  :: Double -- linear velocity in the X axis, in cm/s
+    , velocityAngular :: Double -- angular velocity in the Z axis, in radians/s
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 $(makeLensesBy (Just . (++"Lens")) ''Velocity)
@@ -116,8 +117,8 @@ instance Published Velocity where
 -- ** Odometry
 
 data Position = Position
-    { posX :: Double
-    , posY :: Double
+    { positionX :: Double
+    , positionY :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Position)
@@ -133,7 +134,7 @@ instance Subscribed Position where
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
         
 data Orientation = Orientation
-    { rotZ :: Double -- in radians
+    { orientation :: Double -- in radians
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Orientation)
@@ -171,9 +172,13 @@ instance Subscribed Velocity where
         
 -- ** Buttons
         
+data ButtonStatus = Released | Pressed
+    deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
+
+instance D.Default ButtonStatus
+        
 data Button0 = Button0
-    { -- | 'True' for pressed, 'False' for released
-      but0 :: Bool
+    { butttonStatus0 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button0)
@@ -184,11 +189,10 @@ instance Subscribed Button0 where
     subscribed = do
         buttons <- subscribe "/mobile-base/commands/button"
         let button0 = Topic.filter ((== 0) . ButtonEvent._button) buttons
-        return $ fmap (Button0 . (>0) . ButtonEvent._state) button0
+        return $ fmap (Button0 . toEnum . fromEnum . ButtonEvent._state) button0
 
 data Button1 = Button1
-    { -- | 'True' for pressed, 'False' for released
-      but1 :: Bool
+    { buttonStatus1 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button1)
@@ -199,11 +203,10 @@ instance Subscribed Button1 where
     subscribed = do
         buttons <- subscribe "/mobile-base/commands/button"
         let button1 = Topic.filter ((== 1) . ButtonEvent._button) buttons
-        return $ fmap (Button1 . (>0) . ButtonEvent._state) button1
+        return $ fmap (Button1 . toEnum . fromEnum . ButtonEvent._state) button1
 
 data Button2 = Button2
-    { -- | 'True' for pressed, 'False' for released
-      but2 :: Bool
+    { butttonStatus2 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Button2)
@@ -214,13 +217,14 @@ instance Subscribed Button2 where
     subscribed = do
         buttons <- subscribe "/mobile-base/commands/button"
         let button2 = Topic.filter ((== 2) . ButtonEvent._button) buttons
-        return $ fmap (Button2 . (>0) . ButtonEvent._state) button2
+        return $ fmap (Button2 . toEnum . fromEnum . ButtonEvent._state) button2
 
 -- ** Bumpers
 
+type BumperStatus = ButtonStatus
+
 data BumperLeft = BumperLeft
-    { -- | 'True' for pressed, 'False' for released
-      bumpLeft :: Bool
+    { bumperStatusLeft :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperLeft)
@@ -231,11 +235,10 @@ instance Subscribed BumperLeft where
     subscribed = do
         bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 0) . BumperEvent._bumper) bumpers
-        return $ fmap (BumperLeft . (>0) . BumperEvent._state) bumper
+        return $ fmap (BumperLeft . toEnum . fromEnum . BumperEvent._state) bumper
 
 data BumperCenter = BumperCenter
-    { -- | 'True' for pressed, 'False' for released
-      bumpCenter :: Bool
+    { bumperStatusCenter :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperCenter)
@@ -246,11 +249,10 @@ instance Subscribed BumperCenter where
     subscribed = do
         bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 1) . BumperEvent._bumper) bumpers
-        return $ fmap (BumperCenter . (>0) . BumperEvent._state) bumper
+        return $ fmap (BumperCenter . toEnum . fromEnum . BumperEvent._state) bumper
 
 data BumperRight = BumperRight
-    { -- | 'True' for pressed, 'False' for released
-      bumpRight :: Bool
+    { bumperRightStatus :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''BumperRight)
@@ -261,13 +263,17 @@ instance Subscribed BumperRight where
     subscribed = do
         bumpers <- subscribe "/mobile-base/commands/bumper"
         let bumper = Topic.filter ((== 2) . BumperEvent._bumper) bumpers
-        return $ fmap (BumperRight . (>0) . BumperEvent._state) bumper
+        return $ fmap (BumperRight . toEnum . fromEnum . BumperEvent._state) bumper
 
 -- ** Cliffs
 
+data CliffStatus = Floor | Cliff
+    deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
+
+instance D.Default CliffStatus
+
 data CliffLeft = CliffLeft
-    { -- | 'True' for approaching, 'False' for moving away
-      cliffLeft :: Bool
+    { cliffStatusLeft :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffLeft)
@@ -278,11 +284,10 @@ instance Subscribed CliffLeft where
     subscribed = do
         cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 0) . CliffEvent._sensor) cliffs
-        return $ fmap (CliffLeft . (>0) . CliffEvent._state) cliff
+        return $ fmap (CliffLeft . toEnum . fromEnum . CliffEvent._state) cliff
 
 data CliffCenter = CliffCenter
-    { -- | 'True' for approaching, 'False' for moving away
-      cliffCenter :: Bool
+    { cliffStatusCenter :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffCenter)
@@ -293,11 +298,10 @@ instance Subscribed CliffCenter where
     subscribed = do
         cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 1) . CliffEvent._sensor) cliffs
-        return $ fmap (CliffCenter . (>0) . CliffEvent._state) cliff
+        return $ fmap (CliffCenter . toEnum . fromEnum . CliffEvent._state) cliff
 
 data CliffRight = CliffRight
-    { -- | 'True' for approaching, 'False' for moving away
-      cliffRight :: Bool
+    { cliffStatusRight :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''CliffRight)
@@ -308,5 +312,40 @@ instance Subscribed CliffRight where
     subscribed = do
         cliffs <- subscribe "/mobile-base/commands/cliff"
         let cliff = Topic.filter ((== 2) . CliffEvent._sensor) cliffs
-        return $ fmap (CliffRight . (>0) . CliffEvent._state) cliff
+        return $ fmap (CliffRight . toEnum . fromEnum . CliffEvent._state) cliff
+
+-- ** Wheels
+
+data WheelStatus = Ground | Air
+    deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
+
+instance D.Default WheelStatus
+
+data WheelLeft = WheelLeft
+    { wheelStatusLeft :: WheelStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+    
+$(makeLensesBy (Just . (++"Lens")) ''WheelLeft)
+
+instance D.Default WheelLeft
+
+instance Subscribed WheelLeft where
+    subscribed = do
+        wheels <- subscribe "/mobile-base/commands/wheel_drop"
+        let wheel = Topic.filter ((== wheel_LEFT) . WheelDropEvent._wheel) wheels
+        return $ fmap (WheelLeft . toEnum . fromEnum . WheelDropEvent._state) wheel
+
+data WheelRight = WheelRight
+    { wheelStatusRight :: WheelStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+    
+$(makeLensesBy (Just . (++"Lens")) ''WheelRight)
+
+instance D.Default WheelRight
+
+instance Subscribed WheelRight where
+    subscribed = do
+        wheels <- subscribe "/mobile-base/commands/wheel_drop"
+        let wheel = Topic.filter ((== wheel_RIGHT) . WheelDropEvent._wheel) wheels
+        return $ fmap (WheelRight . toEnum . fromEnum . WheelDropEvent._state) wheel
 

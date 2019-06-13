@@ -16,6 +16,7 @@ import Ros.Kobuki_msgs.Sound as Sound
 import Ros.Kobuki_msgs.BumperEvent as BumperEvent
 import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
+import Ros.Kobuki_msgs.WheelDropEvent as WheelDropEvent
 import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Geometry_msgs.Twist as Twist
 import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
@@ -99,6 +100,7 @@ runRobotPhysics w = liftIO $ do
     go <- rateLimiter robotFrequency $ atomically $ do
         -- original robot position + velocity
         o <- readTVar (_robotOdom st)
+        vdrag <- readTVar (_robotDrag st)
         let vlin = Vector3._x $ Twist._linear $ TwistWithCovariance._twist $ Odometry._twist o
         let vrot = Vector3._z $ Twist._angular $ TwistWithCovariance._twist $ Odometry._twist o
         let pos = Pose._position $ PoseWithCovariance._pose $ Odometry._pose o
@@ -114,11 +116,17 @@ runRobotPhysics w = liftIO $ do
         let arot = min robotMaxRotationalAccel (vrot'' - vrot)
         
         -- new robot position + velocity (computes linear and angular velocities separately)
-        let vlin' = vlin + alin 
+        let v = scalarVec vlin rads `addVec` scalarVec vdrag (rads+pi/2)
         let vrot' = vrot + arot 
         let rads' = rads + vrot' / robotFrequency
-        let px' = px + vlin' * cos rads' / robotFrequency
-        let py' = py + vlin' * sin rads' / robotFrequency
+        let v0 = v `addVec` scalarVec alin rads'
+        let vlin' = magnitudeVec v0 * cos (angleVec v0 - rads')
+        let vdrag0 = magnitudeVec v0 * sin (angleVec v0 - rads')
+        let vdrag' = if vdrag0 > 0
+                then max (vdrag0 - robotWheelDragFriction) 0
+                else min (vdrag0 + robotWheelDragFriction) 0
+        let v' = scalarVec vlin' rads' `addVec` scalarVec vdrag' (rads'+pi/2)
+        let (px',py') = (px,py) `addVec` (v' `divVec` robotFrequency)
         
         let changeRobotEvent bmp newbool = do
                 oldbool <- readTVar (_eventState $ bmp st)
@@ -130,42 +138,54 @@ runRobotPhysics w = liftIO $ do
         bumper (degreesToRadians 0)     _robotBumperC
         bumper (degreesToRadians (-60)) _robotBumperR
         
+        let wheel isLeft bmp = changeRobotEvent bmp $ any (==Hole) $ wheelCells w isLeft rads' (px',py')
+        wheel True    _robotWheelL
+        wheel False   _robotWheelR
+        isWheelL <- readTVar (_eventState $ _robotWheelL st)
+        isWheelR <- readTVar (_eventState $ _robotWheelR st)
+        
         let chgV vx vz twist = set (Twist.linear . Vector3.x) vx
                        $ set (Twist.angular . Vector3.z) vz twist
         let chgP (px,py) rads pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads)
                       $ set (Pose.position . Point.x) px
                       $ set (Pose.position . Point.y) py pose
-        let chgVP vx vz p rads = writeTVar (_robotOdom st) $
-                over (Odometry.pose . PoseWithCovariance.pose) (chgP p rads) $
-                over (Odometry.twist . TwistWithCovariance.twist) (chgV vx vz) o
+        let chgVP vx vd vz p rads = do
+                writeTVar (_robotDrag st) vd
+                writeTVar (_robotOdom st) $
+                    over (Odometry.pose . PoseWithCovariance.pose) (chgP p rads) $
+                    over (Odometry.twist . TwistWithCovariance.twist) (chgV vx vz) o
         
         -- physics of collision reference: https://www.myphysicslab.com/engine2D/collision-en.html
         -- walls have infinite mass
-        case findRobotCollision w (px',py') of
-            Nothing -> do
-                chgVP vlin' vrot' (px',py') rads'
-            Just (cp,cn) -> do
-                -- elasticity of collision
-                let e = 1
-                -- linear velocity before collision
-                let va1 = scalarVec vlin' rads'
-                -- angular velocity before collision
-                let wa1 = vrot'
-                -- distance vector from center of mass of robot to point of collision
-                -- a bit of an hack, we use:
-                -- . the original robot position (as if it did not move)
-                -- . the collision point (that may be outside the area of the robot!)
-                let rap = cp `subVec` (px,py)
-                -- initial pre-collision velocity of collision point of the robot
-                let vap1 = va1 `addVec` (wa1 `mulVec` rap)
-                let j = (- (1 + e) * dotProdVec vap1 cn) / (1/robotMass + (crossProdVec rap cn)^2 / robotInertia)
-                -- linear velocity after collision
-                let va2 = va1 `addVec` ((j `mulVec` cn) `divVec` robotMass)
-                let wa2 = wa1 + (rap `crossProdVec` (j `mulVec` cn)) / robotInertia
-                -- new linear velocity (consider only new velocity in the axis of the wheels)
-                let vlin2 = (magnitudeVec va2) * cos (angleVec va2-rads')
-                -- use old point before collision (as if it did not move)
-                chgVP vlin2 wa2 (px,py) rads'
+        if (isWheelL || isWheelR)
+            then do -- if at least least one wheel in the air, don't move at all
+                chgVP 0 0 0 (px,py) rads
+            else  case findRobotCollision w (px',py') of
+                Nothing -> do
+                    chgVP vlin' vdrag' vrot' (px',py') rads'
+                Just (cp,cn) -> do
+                    -- elasticity of collision
+                    let e = 0.5
+                    -- linear velocity before collision
+                    let va1 = scalarVec vlin' rads' `addVec` scalarVec vdrag' (rads'+pi/2)
+                    -- angular velocity before collision
+                    let wa1 = vrot'
+                    -- distance vector from center of mass of robot to point of collision
+                    -- a bit of an hack, we use:
+                    -- . the original robot position (as if it did not move)
+                    -- . the collision point (that may be outside the area of the robot!)
+                    let rap = cp `subVec` (px,py)
+                    -- initial pre-collision velocity of collision point of the robot
+                    let vap1 = va1 `addVec` (wa1 `mulVec` rap)
+                    let j = (- (1 + e) * dotProdVec vap1 cn) / (1/robotMass + (crossProdVec rap cn)^2 / robotInertia)
+                    -- linear velocity after collision
+                    let va2 = va1 `addVec` ((j `mulVec` cn) `divVec` robotMass)
+                    let wa2 = wa1 + (rap `crossProdVec` (j `mulVec` cn)) / robotInertia
+                    -- new linear velocity (consider only new velocity in the axis of the wheels)
+                    let vlin2 = (magnitudeVec va2) * cos (angleVec va2-rads')
+                    let vdrag2 = (magnitudeVec va2) * sin (angleVec va2-rads')
+                    -- use old point before collision (as if it did not move)
+                    chgVP vlin2 vdrag2 wa2 (px,py) rads'
 
     forkIO $ forever go
 
@@ -226,6 +246,12 @@ intersectMapCol w (l,round -> c) = cell1++cell2
     cell2 = case mapCell w (l,realToFrac c) of
         Just Wall -> [((l,realToFrac c),(0,-1))]
         otherwise -> []
+
+wheelCells :: WorldState -> Bool -> Double -> DPoint -> [Cell]
+wheelCells w isLeft rads p = Maybe.maybeToList $ (posCell w) p'
+    where
+    op = if isLeft then (+) else (-)
+    p' = p `addVec` scalarVec (robotRadius/6) (rads `op` pi/2)
 
 sensorCells :: WorldState -> Double -> DPoint -> [Cell]
 sensorCells w rads p = Maybe.catMaybes $ map (posCell w) [sensorPos (rads-degreesToRadians 15) p,sensorPos rads p,sensorPos (rads+degreesToRadians 15) p]
@@ -316,6 +342,17 @@ writeRobotCliffs st = do
     advertise "/mobile-base/events/cliff" $ Topic.mergeList
         [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
 
+writeRobotWheels :: RobotState -> Node ()
+writeRobotWheels st = do
+    let robotWheelTriggerL = repeatM $ atomically $ do
+            b <- takeTMVar (_eventTrigger $ _robotWheelL st)
+            return $ WheelDropEvent WheelDropEvent.wheel_LEFT (if b then WheelDropEvent.state_DROPPED else WheelDropEvent.state_RAISED)
+    let robotWheelTriggerR = repeatM $ atomically $ do
+            b <- takeTMVar (_eventTrigger $ _robotWheelR st)
+            return $ WheelDropEvent WheelDropEvent.wheel_RIGHT (if b then WheelDropEvent.state_DROPPED else WheelDropEvent.state_RAISED)
+    advertise "/mobile-base/events/wheel_drop" $ Topic.mergeList
+        [robotWheelTriggerL,robotWheelTriggerR]
+
 runRobotNodes :: WorldState -> Node [ThreadId]
 runRobotNodes w = do
     let st = _worldRobot w
@@ -328,6 +365,7 @@ runRobotNodes w = do
     writeRobotButtons st
     writeRobotBumpers st
     writeRobotCliffs st
+    writeRobotWheels st
     return [t0,t1,t2,t3,t4]
     
 -- cm/s2
@@ -365,6 +403,6 @@ robotMass :: Double
 robotMass = 2.35
     
 -- friction factor [0..1] of the wheels
--- percentage of velocity perpendicular to the wheels is lost over
+-- negative velocity perpendicular to the wheels (cm/s)
 robotWheelDragFriction :: Double
-robotWheelDragFriction = 0.3
+robotWheelDragFriction = 1

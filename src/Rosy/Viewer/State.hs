@@ -32,7 +32,7 @@ import Lens.Family.TH
 import Lens.Family (over,set)
 
 type MapState = [[Cell]]
-data Cell = Floor | Wall | Hole
+data Cell = Grnd | Wall | Hole
     deriving (Show,Typeable, G.Generic,Eq)
 
 data WorldState = WorldState
@@ -61,18 +61,18 @@ newWorldState = do
     return $ WorldState display dimension mapInit robotInit vel
     
 mapInit :: MapState
-mapInit = [[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall,Wall]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall]
-          ,[Floor,Floor,Hole,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor]
-          ,[Floor,Floor,Hole,Hole,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor]
-          ,[Floor,Floor,Hole,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor,Floor]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Wall,Floor,Floor,Floor]
-          ,[Floor,Floor,Floor,Floor,Floor,Floor,Floor,Wall,Floor,Floor,Floor,Floor]]
+mapInit = [[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Wall]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+          ,[Grnd,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Grnd]
+          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Grnd]]
 
 -- | Size of each map cell in cm.
 mapCellSize :: Double

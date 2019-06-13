@@ -13,8 +13,8 @@ onLed :: Velocity -> Led1
 onLed _ = Led1 Orange
 
 onSound :: BumperCenter -> Sound
-onSound (BumperCenter True) = OnSound
-onSound (BumperCenter False) = OffSound
+onSound (BumperCenter Pressed) = OnSound
+onSound (BumperCenter Released) = OffSound
 
 --printOdom1 :: Odometry -> IO ()
 --printOdom1 o = putStrLn $ "1 " ++ show (TwistWithCovariance._twist $ Odometry._twist o)

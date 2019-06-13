@@ -46,7 +46,7 @@ drawIO w = do
     wdw3 <- drawMenuIO w o
     return $ W.hR (const 200) (W.many [W.vhsSquare wdw1,wdw2]) wdw3 (_worldDimension w)
 
-floorColor = greyN 0.4 -- medium dark grey
+groundColor = greyN 0.4 -- medium dark grey
 wallColor  = makeColor 0.5 0.25 0.25 1 -- redish
 holeColor  = makeColor 0 0.25 0.5 1 -- blueish
 robotColor = greyN 0.2 -- dark grey
@@ -55,7 +55,7 @@ bumperOnColor = red
 menuColor = greyN 0.2 -- dark grey
 
 drawCell :: Cell -> Window
-drawCell Floor = Color floorColor . W.rectangleWire
+drawCell Grnd = Color groundColor . W.rectangleWire
 drawCell Wall = Color wallColor . W.rectangleSolid
 drawCell Hole = Color holeColor . W.rectangleSolid
 
@@ -154,11 +154,21 @@ drawBotIO w o = do
     cl <- mkCliffL
     cc <- mkCliffC
     cr <- mkCliffR
+    let mkWheelL = do
+            isOn <- atomically $ readTVar (_eventState $ _robotWheelL $ _worldRobot w)
+            let c = if isOn then bumperOnColor else bumperOffColor
+            return $ \r -> Translate 0 (r/3) $ Color c $ rectangleSolid (r*2/5) (r*1/5)
+    let mkWheelR = do
+            isOn <- atomically $ readTVar (_eventState $ _robotWheelR $ _worldRobot w)
+            let c = if isOn then bumperOnColor else bumperOffColor
+            return $ \r -> Translate 0 (-r/3) $ Color c $ rectangleSolid (r*2/5) (r*1/5)
+    wh1 <- mkWheelL
+    wh2 <- mkWheelR
     let metal = Color robotColor . circleSolid
-    let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r]
+    let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r,wh1 r,wh2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     let pose = PoseWithCovariance._pose $ Odometry._pose o
-    let ang = radiansToDegrees $ realToFrac $ Controller.rotZ $ Controller.orientationFromROS $ Pose._orientation pose
+    let ang = radiansToDegrees $ realToFrac $ Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose
     let posx = realToFrac $ Point._x $ Pose._position pose
     let posy = realToFrac $ Point._y $ Pose._position pose
     return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
@@ -192,10 +202,10 @@ changeVel k w = atomically $ do
     return w
   where
     chg = case k of
-        KeyUp    -> over (Controller.velXLens) (\x -> x+0.5) D.def
-        KeyDown  -> over (Controller.velXLens) (\x -> x-0.5) D.def
-        KeyLeft  -> over (Controller.angZLens) (\x -> x+0.33) D.def
-        KeyRight -> over (Controller.angZLens) (\x -> x-0.33) D.def
+        KeyUp    -> over (Controller.velocityLinearLens) (\x -> x+0.5) D.def
+        KeyDown  -> over (Controller.velocityLinearLens) (\x -> x-0.5) D.def
+        KeyLeft  -> over (Controller.velocityAngularLens) (\x -> x+0.33) D.def
+        KeyRight -> over (Controller.velocityAngularLens) (\x -> x-0.33) D.def
 
 timeIO :: Float -> WorldState -> IO WorldState
 timeIO t w = return w

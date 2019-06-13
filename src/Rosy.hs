@@ -14,6 +14,6 @@ import Rosy.Controller.Kobuki
 import Rosy.Robot.Kobuki
 import Rosy.Robot.State
 import Rosy.Viewer.Core
-import Rosy.Viewer.State
+import Rosy.Viewer.State 
 import Rosy.Interface
 import Rosy.Util
