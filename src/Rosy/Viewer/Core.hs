@@ -46,13 +46,13 @@ drawIO w = do
     wdw3 <- drawMenuIO w o
     return $ W.hR (const 200) (W.many [W.vhsSquare wdw1,wdw2]) wdw3 (_worldDimension w)
 
-floorColor = greyN 0.4
-wallColor  = makeColor 0.5 0.25 0.25 1
-holeColor  = makeColor 0 0.25 0.5 1
-robotColor = greyN 0.2
+floorColor = greyN 0.4 -- medium dark grey
+wallColor  = makeColor 0.5 0.25 0.25 1 -- redish
+holeColor  = makeColor 0 0.25 0.5 1 -- blueish
+robotColor = greyN 0.2 -- dark grey
 bumperOffColor = black
 bumperOnColor = red
-menuColor = greyN 0.2
+menuColor = greyN 0.2 -- dark grey
 
 drawCell :: Cell -> Window
 drawCell Floor = Color floorColor . W.rectangleWire
@@ -133,7 +133,7 @@ drawBotIO w o = do
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate 15 $ Color c $ thickArc 0 30 r (r/10)
     let mkBumperR = do
-            isOn <- atomically $ readTVar (_eventState $ _robotBumperC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperR $ _worldRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (-15) $ Color c $ thickArc (-60) (-90) r (r/10)
     bl <- mkBumperL
@@ -185,15 +185,15 @@ keyStateToBool Up = False
 reactButton :: (RobotState -> RobotEventState) -> KeyState -> WorldState -> IO WorldState
 reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ _worldRobot w) (keyStateToBool kst) >> return w
 
--- Values taken from the kobuki_keyop
+-- Values taken from the kobuki_keyop: 0.05, 0.33
 changeVel :: SpecialKey -> WorldState -> IO WorldState
 changeVel k w = atomically $ do
     putTMVar (_eventTrigger $ _worldVel w) chg
     return w
   where
     chg = case k of
-        KeyUp    -> over (Controller.velXLens) (\x -> x+0.05) D.def
-        KeyDown  -> over (Controller.velXLens) (\x -> x-0.05) D.def
+        KeyUp    -> over (Controller.velXLens) (\x -> x+0.5) D.def
+        KeyDown  -> over (Controller.velXLens) (\x -> x-0.5) D.def
         KeyLeft  -> over (Controller.angZLens) (\x -> x+0.33) D.def
         KeyRight -> over (Controller.angZLens) (\x -> x-0.33) D.def
 

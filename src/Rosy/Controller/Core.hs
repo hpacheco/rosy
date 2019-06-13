@@ -1,13 +1,22 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE DeriveGeneric, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 
 module Rosy.Controller.Core where
 
 import Data.UUID.V4 (nextRandom)
 import Data.Maybe
 
+import Data.Typeable
+import qualified GHC.Generics as G
+import qualified Data.Default.Generics as D
+import Lens.Family.TH (makeLensesBy)
+import Lens.Family (view, set)
+
 import Ros.Node
 import Ros.Topic as Topic
 import Ros.Topic.Util as Topic
+import Data.Time.Clock
+
+import Rosy.Util
 
 import Control.Monad
 
@@ -46,14 +55,32 @@ instance (Subscribed a) => Subscribed (Maybe a) where
 instance Subscribed () where
     subscribed = return $ topicRate 1 $ Topic.repeat ()
     
+data Clock = Clock
+    { hours   :: Int
+    , minutes :: Int
+    , seconds :: Int
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+    
+$(makeLensesBy (Just . (++"Lens")) ''Clock)
+
+clockFromUTCTime :: UTCTime -> Clock
+clockFromUTCTime utc = Clock h m s
+    where
+    diff = utctDayTime utc
+    h = remBy 24 $ quotBy 3600 diff
+    m = remBy 60 $ quotBy 60 diff
+    s = remBy 60 $ quotBy 1 diff
+
+instance D.Default Clock
+
+instance Subscribed Clock where
+    subscribed = return $ topicRate 1 $ Topic.repeatM $ liftM clockFromUTCTime getCurrentTime
+    
 class Published a where
     published :: Topic IO a -> Node ()
     
 instance Published Say where
     published t = runHandler id t >> return ()
-
-(><) :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
-(f >< g) (a,b) = (f a,g b)
 
 instance (Published a,Published b) => Published (a,b) where
     published t = do
@@ -84,13 +111,13 @@ instance (Published a) => Published (Maybe a) where
 instance Published () where
     published t = runHandler return t >> return ()
 
-buildController :: (Subscribed a,Published b) => (a -> b) -> Node ()
-buildController f = subscribed >>= published . fmap f
-
--- | Runs a new node that subscribes to inputs of type 'a' and publishes outputs of type 'b'.
-runController :: (Subscribed a,Published b) => (a -> b) -> IO ()
-runController f = do
-    nodename <- nextRandom -- generate a random node name
-    --putStrLn $ "Initializing new node with name " ++ show nodename
-    runNode (show nodename) (buildController f)
+--buildController :: (Subscribed a,Published b) => (a -> b) -> Node ()
+--buildController f = subscribed >>= published . fmap f
+--
+---- | Runs a new node that subscribes to inputs of type 'a' and publishes outputs of type 'b'.
+--runController :: (Subscribed a,Published b) => (a -> b) -> IO ()
+--runController f = do
+--    nodename <- nextRandom -- generate a random node name
+--    --putStrLn $ "Initializing new node with name " ++ show nodename
+--    runNode (show nodename) (buildController f)
 

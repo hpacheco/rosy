@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, ScopedTypeVariables, ViewPatterns #-}
+{-# LANGUAGE TupleSections, CPP, DeriveGeneric, ScopedTypeVariables, ViewPatterns #-}
 
 module Rosy.Robot.Kobuki where
 
@@ -44,7 +44,7 @@ import Graphics.Gloss.Interface.Environment
 import Control.Exception
 
 import Paths_rosy
-    
+
 -- ** Robot inputs
 
 orNothing :: IO () -> IO ()
@@ -120,37 +120,149 @@ runRobotPhysics w = liftIO $ do
         let px' = px + vlin' * cos rads' / robotFrequency
         let py' = py + vlin' * sin rads' / robotFrequency
         
-        -- check if robot hit a wall
-        --let hitWall = any (==Wall) $ robotCells w (px',py')
-        --let (px'',py'') = if hitWall then (px,py) else (px',py')
+        let changeRobotEvent bmp newbool = do
+                oldbool <- readTVar (_eventState $ bmp st)
+                writeTVar (_eventState $ bmp st) newbool
+                when (oldbool /= newbool) $ putTMVar (_eventTrigger $ bmp st) newbool
         
-        let chgV twist = set (Twist.linear . Vector3.x) vlin'
-                       $ set (Twist.angular . Vector3.z) vrot' twist
-        let chgP pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads')
-                      $ set (Pose.position . Point.x) px'
-                      $ set (Pose.position . Point.y) py' pose
-        writeTVar (_robotOdom st) $
-            over (Odometry.pose . PoseWithCovariance.pose) chgP $
-            over (Odometry.twist . TwistWithCovariance.twist) chgV o
+        let bumper b bmp = changeRobotEvent bmp $ any (==Wall) $ sensorCells w (rads'+b) (px',py')
+        bumper (degreesToRadians 60)    _robotBumperL
+        bumper (degreesToRadians 0)     _robotBumperC
+        bumper (degreesToRadians (-60)) _robotBumperR
+        
+        let chgV vx vz twist = set (Twist.linear . Vector3.x) vx
+                       $ set (Twist.angular . Vector3.z) vz twist
+        let chgP (px,py) rads pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads)
+                      $ set (Pose.position . Point.x) px
+                      $ set (Pose.position . Point.y) py pose
+        let chgVP vx vz p rads = writeTVar (_robotOdom st) $
+                over (Odometry.pose . PoseWithCovariance.pose) (chgP p rads) $
+                over (Odometry.twist . TwistWithCovariance.twist) (chgV vx vz) o
+        
+        -- physics of collision reference: https://www.myphysicslab.com/engine2D/collision-en.html
+        -- walls have infinite mass
+        case findRobotCollision w (px',py') of
+            Nothing -> do
+                chgVP vlin' vrot' (px',py') rads'
+            Just (cp,cn) -> do
+                -- elasticity of collision
+                let e = 1
+                -- linear velocity before collision
+                let va1 = scalarVec vlin' rads'
+                -- angular velocity before collision
+                let wa1 = vrot'
+                -- distance vector from center of mass of robot to point of collision
+                -- a bit of an hack, we use:
+                -- . the original robot position (as if it did not move)
+                -- . the collision point (that may be outside the area of the robot!)
+                let rap = cp `subVec` (px,py)
+                -- initial pre-collision velocity of collision point of the robot
+                let vap1 = va1 `addVec` (wa1 `mulVec` rap)
+                let j = (- (1 + e) * dotProdVec vap1 cn) / (1/robotMass + (crossProdVec rap cn)^2 / robotInertia)
+                -- linear velocity after collision
+                let va2 = va1 `addVec` ((j `mulVec` cn) `divVec` robotMass)
+                let wa2 = wa1 + (rap `crossProdVec` (j `mulVec` cn)) / robotInertia
+                -- new linear velocity (consider only new velocity in the axis of the wheels)
+                let vlin2 = (magnitudeVec va2) * cos (angleVec va2-rads')
+                -- use old point before collision (as if it did not move)
+                chgVP vlin2 wa2 (px,py) rads'
 
     forkIO $ forever go
 
-sensorPos :: Double -> (Double,Double) -> (Double,Double)
+-- returns (averages if multiple collisions)
+-- point of collision with a wall 
+-- normal (perpendicular) vector to the wall at the point of collision
+findRobotCollision :: WorldState -> DPoint -> Maybe (DPoint,DVector)
+findRobotCollision w pXY@(pX,pY) = case collisions of
+    [] -> Nothing
+    (unzip -> (ps,ns)) -> Just (averageVec ps,normVec $ angleVec $ sumVec ns)
+  where
+    m = _worldMap w
+    minX = pX - robotRadius
+    maxX = pX + robotRadius
+    minY = pY - robotRadius
+    maxY = pY + robotRadius 
+    (minC::Int) = floor $ posXToMapC w minX
+    (maxC::Int) = ceiling $ posXToMapC w maxX
+    (minL::Int) = floor $ posYToMapL w maxY
+    (maxL::Int) = ceiling $ posYToMapL w minY
+    pLC = posToMap w pXY
+    pointsL = concatMap (circleLineIntersection (pLC,robotRadius / mapCellSize)) lins
+    pointsC = concatMap (circleLineIntersection (pLC,robotRadius / mapCellSize)) cols
+    
+    pointsL' = intersectMapLins w pointsL
+    pointsC' = intersectMapCols w pointsC
+    collisions = map (mapToPos w >< (swap . negVec)) pointsL' ++ map (mapToPos w >< swap) pointsC'
+    
+    mkLin l = ((l,0),(l,1))
+    mkCol c = ((0,c),(1,c))
+    lins = map mkLin $ map realToFrac [minL..maxL]
+    cols = map mkCol $ map realToFrac [minC..maxC]
+
+intersectMapLins :: WorldState -> [DPoint] -> [(DPoint,DVector)]
+intersectMapLins w [] = []
+intersectMapLins w (p:ps) = intersectMapLin w p ++ intersectMapLins w ps
+
+intersectMapLin :: WorldState -> DPoint -> [(DPoint,DVector)]
+intersectMapLin w (round -> l,c) = cell1++cell2
+    where
+    cell1 = case mapCell w (realToFrac $ pred l,c) of
+        Just Wall -> [((realToFrac l,c),(1,0))]
+        otherwise -> []
+    cell2 = case mapCell w (realToFrac l,c) of
+        Just Wall -> [((realToFrac l,c),(-1,0))]
+        otherwise -> []
+
+intersectMapCols :: WorldState -> [DPoint] -> [(DPoint,DVector)]
+intersectMapCols w [] = []
+intersectMapCols w (p:ps) = intersectMapCol w p ++ intersectMapCols w ps
+
+intersectMapCol :: WorldState -> DPoint -> [(DPoint,DVector)]
+intersectMapCol w (l,round -> c) = cell1++cell2
+    where
+    cell1 = case mapCell w (l,realToFrac $ pred c) of
+        Just Wall -> [((l,realToFrac c),(0,1))]
+        otherwise -> []
+    cell2 = case mapCell w (l,realToFrac c) of
+        Just Wall -> [((l,realToFrac c),(0,-1))]
+        otherwise -> []
+
+sensorCells :: WorldState -> Double -> DPoint -> [Cell]
+sensorCells w rads p = Maybe.catMaybes $ map (posCell w) [sensorPos (rads-degreesToRadians 15) p,sensorPos rads p,sensorPos (rads+degreesToRadians 15) p]
+
+-- consider only one point for a sensor
+sensorPos :: Double -> DPoint -> DPoint
 sensorPos rads (px,py) = (px + robotRadius * cos rads,py + robotRadius * sin rads)
 
-posCell :: WorldState -> (Double,Double) -> Maybe Cell
-posCell w p = Monad.join $ fmap (flip atMay $ floor pc) (m `atMay` floor pl)
+-- find the map cell for a position in the world
+posCell :: WorldState -> DPoint -> Maybe Cell
+posCell w p = mapCell w (posToMap w p)
+
+-- find the map cell for a position in the map
+mapCell :: WorldState -> DPoint -> Maybe Cell
+mapCell w (pl,pc) = Monad.join $ fmap (flip atMay $ floor pc) (m `atMay` floor pl)
     where
-    (pl,pc) = posToMap w p
     m = _worldMap w
 
-posToMap :: WorldState -> (Double,Double) -> (Double,Double)
-posToMap w (px,py) = (mx/2 + px/mapCellSize ,my/2 - py/mapCellSize)
+-- converts a world position to a map position
+posToMap :: WorldState -> DPoint -> DPoint
+posToMap w (px,py) = (ml/2 - py/mapCellSize,mc/2 + px/mapCellSize)
     where
     m = _worldMap w
-    (realToFrac -> mx,realToFrac -> my) = mapSize m
+    (realToFrac -> ml,realToFrac -> mc) = mapSize m
 
-robotCells :: WorldState -> (Double,Double) -> [Cell]
+posXToMapC,posYToMapL :: WorldState -> Double -> Double
+posXToMapC w = snd . posToMap w . (,0)
+posYToMapL w = fst . posToMap w . (0,)
+
+-- converts a map position to a world position
+mapToPos :: WorldState -> DPoint -> DPoint
+mapToPos w (pl,pc) = ((pc - mc/2) * mapCellSize,(-pl + ml/2) * mapCellSize)
+    where
+    m = _worldMap w
+    (realToFrac -> ml,realToFrac -> mc) = mapSize m
+
+robotCells :: WorldState -> DPoint -> [Cell]
 robotCells w p = Maybe.catMaybes $ map (posCell w) ps
     where
     angles = [0,30..360]
@@ -240,10 +352,19 @@ robotSize = 35.15
 robotRadius :: Double
 robotRadius = robotSize / 2
     
--- frequency of the physics engine
+-- frequency of the physics engine (Hz)
 robotFrequency :: Double
 robotFrequency = 10
+
+-- moment of inertia of robot
+robotInertia :: Double
+robotInertia = pi * (robotRadius^4) / 4
     
+-- mass of the robot (kg)
+robotMass :: Double
+robotMass = 2.35
     
-    
-    
+-- friction factor [0..1] of the wheels
+-- percentage of velocity perpendicular to the wheels is lost over
+robotWheelDragFriction :: Double
+robotWheelDragFriction = 0.3

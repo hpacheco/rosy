@@ -33,7 +33,7 @@ import Lens.Family (over,set)
 
 type MapState = [[Cell]]
 data Cell = Floor | Wall | Hole
-    deriving (Typeable, G.Generic,Eq)
+    deriving (Show,Typeable, G.Generic,Eq)
 
 data WorldState = WorldState
     { _worldDisplay :: Display -- initial gloss display static
