@@ -3,9 +3,11 @@ module Rosy.Util where
 type DPoint = (Double,Double)
 type DVector = DPoint
 
+-- | Converts an angle in radians to degrees.
 radiansToDegrees :: Floating a => a -> a
 radiansToDegrees a = 180 * a / pi
 
+-- | Converts an angle in degrees to radians.
 degreesToRadians :: Floating a => a -> a
 degreesToRadians rads = rads * pi / 180
 

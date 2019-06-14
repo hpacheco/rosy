@@ -20,10 +20,9 @@ import Rosy.Util
 
 import Control.Monad
 
-type Say = IO ()
-
-say :: String -> Say
-say = putStrLn
+-- | Command the robot to speak some sentence.
+data Say = Say String
+  deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 class Subscribed a where
     subscribed :: Node (Topic IO a)
@@ -55,6 +54,7 @@ instance (Subscribed a) => Subscribed (Maybe a) where
 instance Subscribed () where
     subscribed = return $ topicRate 1 $ Topic.repeat ()
     
+-- | The current time in hours, minutes and seconds.
 data Clock = Clock
     { hours   :: Int
     , minutes :: Int
@@ -80,7 +80,8 @@ class Published a where
     published :: Topic IO a -> Node ()
     
 instance Published Say where
-    published t = runHandler id t >> return ()
+    published t = do
+        runHandler (\(Say str) -> putStrLn str) t >> return ()
 
 instance (Published a,Published b) => Published (a,b) where
     published t = do

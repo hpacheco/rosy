@@ -35,6 +35,7 @@ import qualified Ros.Kobuki_msgs.Led as Led
 
 -- ** Sounds
 
+-- | One of the seven pre-configured robot sounds.
 data Sound
     = OnSound
     | OffSound
@@ -53,6 +54,7 @@ instance Published Sound where
 
 -- ** Leds
 
+-- | All the possible robot led colors.
 data Color = Black | Green | Orange | Red
   deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
  
@@ -61,6 +63,7 @@ instance D.Default Color
 colorToROS :: Color -> Word.Word8
 colorToROS = toEnum . fromEnum
 
+-- | The robot's first led light.
 data Led1 = Led1
     { ledColor1 :: Color
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -75,6 +78,7 @@ instance D.Default Led1
 instance Published Led1 where
     published t = advertise "/mobile-base/commands/led1" (fmap led1ToROS t)
 
+-- | The robot's second led light.
 data Led2 = Led2
     { ledColor2 :: Color
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -91,9 +95,12 @@ instance Published Led2 where
 
 -- ** Velocity
 
+-- | The velocity of the robot is defined using two parameters.
 data Velocity = Velocity
-    { velocityLinear  :: Double -- linear velocity in the X axis, in cm/s
-    , velocityAngular :: Double -- angular velocity in the Z axis, in radians/s
+    { -- | Linear velocity in the same direction as the robot (cm/s)
+      velocityLinear  :: Double
+      -- | Angular velocity in the counter-clockwise direction (radians/s)
+    , velocityAngular :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 $(makeLensesBy (Just . (++"Lens")) ''Velocity)
@@ -116,8 +123,11 @@ instance Published Velocity where
 
 -- ** Odometry
 
+-- | The current position of the robot.
 data Position = Position
-    { positionX :: Double
+    { -- | Coordinate in the horizontal X axis.
+      positionX :: Double
+      -- | Coordinate in the vertical Y axis.
     , positionY :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
@@ -133,8 +143,10 @@ instance Subscribed Position where
         odom <- subscribe "odom"
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
         
+-- | The orientation of the robot.
 data Orientation = Orientation
-    { orientation :: Double -- in radians
+    { -- | Orientation of the robot as an angle relative to the horizontal X axis (radians).
+      orientation :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Orientation)
@@ -171,12 +183,14 @@ instance Subscribed Velocity where
         return $ fmap (velocityFromROS . TwistWithCovariance._twist . Odometry._twist) odom
         
 -- ** Buttons
-        
+
+-- | When a button is 'Released' or 'Pressed'.
 data ButtonStatus = Released | Pressed
     deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
 
 instance D.Default ButtonStatus
-        
+
+-- | The first button of the robot.
 data Button0 = Button0
     { butttonStatus0 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -191,6 +205,7 @@ instance Subscribed Button0 where
         let button0 = Topic.filter ((== 0) . ButtonEvent._button) buttons
         return $ fmap (Button0 . toEnum . fromEnum . ButtonEvent._state) button0
 
+-- | The second button of the robot.
 data Button1 = Button1
     { buttonStatus1 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -205,6 +220,7 @@ instance Subscribed Button1 where
         let button1 = Topic.filter ((== 1) . ButtonEvent._button) buttons
         return $ fmap (Button1 . toEnum . fromEnum . ButtonEvent._state) button1
 
+-- | The third button of the robot.
 data Button2 = Button2
     { butttonStatus2 :: ButtonStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -221,8 +237,10 @@ instance Subscribed Button2 where
 
 -- ** Bumpers
 
+-- | When a bumper is 'Pressed' against a wall or 'Released' from a wall.
 type BumperStatus = ButtonStatus
 
+-- | The left-sided bumper of the robot.
 data BumperLeft = BumperLeft
     { bumperStatusLeft :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -237,6 +255,7 @@ instance Subscribed BumperLeft where
         let bumper = Topic.filter ((== 0) . BumperEvent._bumper) bumpers
         return $ fmap (BumperLeft . toEnum . fromEnum . BumperEvent._state) bumper
 
+-- | The front bumper of the robot.
 data BumperCenter = BumperCenter
     { bumperStatusCenter :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -251,6 +270,7 @@ instance Subscribed BumperCenter where
         let bumper = Topic.filter ((== 1) . BumperEvent._bumper) bumpers
         return $ fmap (BumperCenter . toEnum . fromEnum . BumperEvent._state) bumper
 
+-- | The right-sided bumper of the robot.
 data BumperRight = BumperRight
     { bumperRightStatus :: BumperStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -267,11 +287,13 @@ instance Subscribed BumperRight where
 
 -- ** Cliffs
 
+-- | When a cliff (downward height) sensor is looking at the 'Floor' or at a 'Cliff'.
 data CliffStatus = Floor | Cliff
     deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
 
 instance D.Default CliffStatus
 
+-- | The left-sided cliff sensor of the robot.
 data CliffLeft = CliffLeft
     { cliffStatusLeft :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -286,6 +308,7 @@ instance Subscribed CliffLeft where
         let cliff = Topic.filter ((== 0) . CliffEvent._sensor) cliffs
         return $ fmap (CliffLeft . toEnum . fromEnum . CliffEvent._state) cliff
 
+-- | The front cliff sensor of the robot.
 data CliffCenter = CliffCenter
     { cliffStatusCenter :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -300,6 +323,7 @@ instance Subscribed CliffCenter where
         let cliff = Topic.filter ((== 1) . CliffEvent._sensor) cliffs
         return $ fmap (CliffCenter . toEnum . fromEnum . CliffEvent._state) cliff
 
+-- | The right-sided cliff sensor of the robot.
 data CliffRight = CliffRight
     { cliffStatusRight :: CliffStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -316,11 +340,13 @@ instance Subscribed CliffRight where
 
 -- ** Wheels
 
+-- | When one of the robot's wheels is touching the 'Ground' or is suspended in the 'Air'.
 data WheelStatus = Ground | Air
     deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
 
 instance D.Default WheelStatus
 
+-- | The left-side wheel of the robot.
 data WheelLeft = WheelLeft
     { wheelStatusLeft :: WheelStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -335,6 +361,7 @@ instance Subscribed WheelLeft where
         let wheel = Topic.filter ((== wheel_LEFT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelLeft . toEnum . fromEnum . WheelDropEvent._state) wheel
 
+-- | The right-side wheel of the robot.
 data WheelRight = WheelRight
     { wheelStatusRight :: WheelStatus
     } deriving (Show, Eq, Ord, Typeable, G.Generic)

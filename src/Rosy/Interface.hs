@@ -23,11 +23,11 @@ startNode n w = runNode "rosy-simulator" $ do
     runRobotNodes w
     runViewerNodes w
 
-class Nodlet a where
-    nodlet :: a -> Node ()
+class Controller a where
+    controller :: a -> Node ()
 
-instance Published b => Nodlet b where
-    nodlet b = published $ Topic.topicRate 1 $ Topic.repeat b
+instance Published b => Controller b where
+    controller b = published $ Topic.topicRate 1 $ Topic.repeat b
     
 --instance (Nodlet a,Nodlet b) => Nodlet (a,b) where
 --    nodlet (a,b) = nodlet a >> nodlet b
@@ -46,7 +46,9 @@ instance (Subscribed a,Published b) => Published (a -> b) where
         ta <- subscribed
         published (fmap (uncurry ($)) $ tab `Topic.everyNew` ta)
 
-simulate :: Nodlet a => a -> IO ()
+-- | The main function that produces a Rosy program.
+-- It receives a robot 'Controller' that does the actual job of interacting with your robot.
+simulate :: Controller a => a -> IO ()
 simulate n = do
     w <- newWorldState
-    concurrently_ (startNode (nodlet n) w) (runViewer w)
+    concurrently_ (startNode (controller n) w) (runViewer w)
