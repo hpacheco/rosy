@@ -28,6 +28,9 @@ class Controller a where
 
 instance Published b => Controller b where
     controller b = published $ Topic.topicRate 1 $ Topic.repeat b
+
+instance Controller a => Controller [a] where
+    controller = mapM_ controller
     
 --instance (Nodlet a,Nodlet b) => Nodlet (a,b) where
 --    nodlet (a,b) = nodlet a >> nodlet b
