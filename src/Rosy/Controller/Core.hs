@@ -42,6 +42,18 @@ instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d) => Subscribed (a,
 instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e) => Subscribed (a,b,c,d,e) where
     subscribed = liftM (fmap (\(a,(b,(c,(d,e)))) -> (a,b,c,d,e))) subscribed
 
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e,Subscribed f) => Subscribed (a,b,c,d,e,f) where
+    subscribed = liftM (fmap (\(a,(b,(c,(d,(e,f))))) -> (a,b,c,d,e,f))) subscribed
+
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e,Subscribed f,Subscribed g) => Subscribed (a,b,c,d,e,f,g) where
+    subscribed = liftM (fmap (\(a,(b,(c,(d,(e,(f,g)))))) -> (a,b,c,d,e,f,g))) subscribed
+
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e,Subscribed f,Subscribed g,Subscribed h) => Subscribed (a,b,c,d,e,f,g,h) where
+    subscribed = liftM (fmap (\(a,(b,(c,(d,(e,(f,(g,h))))))) -> (a,b,c,d,e,f,g,h))) subscribed
+
+instance (Subscribed a,Subscribed b,Subscribed c,Subscribed d,Subscribed e,Subscribed f,Subscribed g,Subscribed h,Subscribed i) => Subscribed (a,b,c,d,e,f,g,h,i) where
+    subscribed = liftM (fmap (\(a,(b,(c,(d,(e,(f,(g,(h,i)))))))) -> (a,b,c,d,e,f,g,h,i))) subscribed
+
 instance (Subscribed a,Subscribed b) => Subscribed (Either a b) where
     subscribed = do
         a <- subscribed
@@ -97,6 +109,18 @@ instance (Published a,Published b,Published c,Published d) => Published (a,b,c,d
     
 instance (Published a,Published b,Published c,Published d,Published e) => Published (a,b,c,d,e) where
     published t = published $ fmap (\(a,b,c,d,e) -> (a,(b,(c,(d,e))))) t
+
+instance (Published a,Published b,Published c,Published d,Published e,Published f) => Published (a,b,c,d,e,f) where
+    published t = published $ fmap (\(a,b,c,d,e,f) -> (a,(b,(c,(d,(e,f)))))) t
+
+instance (Published a,Published b,Published c,Published d,Published e,Published f,Published g) => Published (a,b,c,d,e,f,g) where
+    published t = published $ fmap (\(a,b,c,d,e,f,g) -> (a,(b,(c,(d,(e,(f,g))))))) t
+
+instance (Published a,Published b,Published c,Published d,Published e,Published f,Published g,Published h) => Published (a,b,c,d,e,f,g,h) where
+    published t = published $ fmap (\(a,b,c,d,e,f,g,h) -> (a,(b,(c,(d,(e,(f,(g,h)))))))) t
+
+instance (Published a,Published b,Published c,Published d,Published e,Published f,Published g,Published h,Published i) => Published (a,b,c,d,e,f,g,h,i) where
+    published t = published $ fmap (\(a,b,c,d,e,f,g,h,i) -> (a,(b,(c,(d,(e,(f,(g,(h,i))))))))) t
 
 instance (Published a,Published b) => Published (Either a b) where
     published t = do
