@@ -53,6 +53,7 @@ module Rosy
     , Button0(..)
     , Button1(..)
     , Button2(..)
+    , ButtonStatus(..)
     --
     -- *** Bumpers
     --
@@ -60,6 +61,7 @@ module Rosy
     , BumperLeft(..)
     , BumperCenter(..)
     , BumperRight(..)
+    , BumperStatus(..)
     --
     -- *** Cliff sensors
     
@@ -68,6 +70,7 @@ module Rosy
     , CliffLeft(..)
     , CliffCenter(..)
     , CliffRight(..)
+    , CliffStatus(..)
     --
     -- *** Wheels
     --
@@ -75,6 +78,7 @@ module Rosy
     --
     , WheelLeft(..)
     , WheelRight(..)
+    , WheelStatus(..)
     --
     -- *** Periodic inputs
     --
@@ -115,6 +119,7 @@ module Rosy
     --
     , Led1(..)
     , Led2(..)
+    , LedColor(..)
     -- 
     -- *** Velocity
     --

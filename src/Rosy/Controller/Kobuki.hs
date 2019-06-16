@@ -55,23 +55,23 @@ instance Published Sound where
 -- ** Leds
 
 -- | All the possible robot led colors.
-data Color = Black | Green | Orange | Red
+data LedColor = Black | Green | Orange | Red
   deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
  
-instance D.Default Color
+instance D.Default LedColor
  
-colorToROS :: Color -> Word.Word8
-colorToROS = toEnum . fromEnum
+ledColorToROS :: LedColor -> Word.Word8
+ledColorToROS = toEnum . fromEnum
 
 -- | The robot's first led light.
 data Led1 = Led1
-    { ledColor1 :: Color
+    { ledColor1 :: LedColor
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 $(makeLensesBy (Just . (++"Lens")) ''Led1)
 
 led1ToROS :: Led1 -> Led.Led
-led1ToROS = Led.Led . colorToROS . ledColor1
+led1ToROS = Led.Led . ledColorToROS . ledColor1
 
 instance D.Default Led1
 
@@ -80,13 +80,13 @@ instance Published Led1 where
 
 -- | The robot's second led light.
 data Led2 = Led2
-    { ledColor2 :: Color
+    { ledColor2 :: LedColor
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 $(makeLensesBy (Just . (++"Lens")) ''Led2)
 
 led2ToROS :: Led2 -> Led.Led
-led2ToROS = Led.Led . colorToROS . ledColor2
+led2ToROS = Led.Led . ledColorToROS . ledColor2
 
 instance D.Default Led2
 
