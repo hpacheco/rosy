@@ -38,7 +38,7 @@ data Cell = Grnd | Wall | Hole
 data WorldState = WorldState
     { _worldDisplay :: Display -- initial gloss display static
     , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
-    , _worldMap :: WorldMap -- static
+    , _worldMap :: World -- static
     , _worldRobot :: RobotState -- static
     , _worldVel :: EventState Controller.Velocity -- keyop for desired velocity
     } deriving (Typeable, G.Generic)
