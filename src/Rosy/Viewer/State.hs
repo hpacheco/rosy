@@ -78,7 +78,7 @@ world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
 mapCellSize :: Double
 mapCellSize = 30
 
-mapSize :: MapState -> Dimension
+mapSize :: World -> Dimension
 mapSize [] = (0,0)
 mapSize (l:ls) = (length l,succ $ length ls)
 
