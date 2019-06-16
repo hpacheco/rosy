@@ -31,14 +31,14 @@ import Graphics.Gloss.Interface.Environment
 import Lens.Family.TH
 import Lens.Family (over,set)
 
-type MapState = [[Cell]]
+type World = [[Cell]]
 data Cell = Grnd | Wall | Hole
     deriving (Show,Typeable, G.Generic,Eq)
 
 data WorldState = WorldState
     { _worldDisplay :: Display -- initial gloss display static
     , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
-    , _worldMap :: MapState -- static
+    , _worldMap :: WorldMap -- static
     , _worldRobot :: RobotState -- static
     , _worldVel :: EventState Controller.Velocity -- keyop for desired velocity
     } deriving (Typeable, G.Generic)
@@ -52,27 +52,27 @@ newDisplay = getDisplay
 newDisplay = return $ InWindow "rosy-simulator" (800,800) (0,0)
 #endif
     
-newWorldState :: IO WorldState
-newWorldState = do
+newWorldState :: World -> IO WorldState
+newWorldState wmap = do
     display <- newDisplay
     robotInit <- newRobotState
     dimension <- displayDimension display
     vel <- newEventState D.def
-    return $ WorldState display dimension mapInit robotInit vel
+    return $ WorldState display dimension wmap robotInit vel
     
-mapInit :: MapState
-mapInit = [[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Wall]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-          ,[Grnd,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Grnd]
-          ,[Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Grnd]]
+world1 :: World
+world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
+         ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
 -- | Size of each map cell in cm.
 mapCellSize :: Double

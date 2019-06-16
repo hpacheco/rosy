@@ -12,30 +12,30 @@ module Rosy
     --
     {-| A robot 'Controller' is a function:
     
-       (1) whose __inputs__ are events that occured in the robot to which we want to __react__;
-       2. whose __outputs__ are commands that we __order__ the robot to perform.
+       (1) whose __inputs__ are events that occured in the robot to which we want to __react__ to;
+       2. whose __outputs__ are actions that we __order__ the robot to perform.
     -}
-    -- | In other words, a controller is a function that we install on the robot. It reads events from the robot and issues commands back to the robot.
+    -- | In other words, a controller is a piece of code that we install on the robot to monitor its events and order it to act accordingly.
     --
-    -- The type of a controller therefore establishes how it interacts with the robot. Writing controllers as simply as we write functions is very powerful:
+    -- The first part to designing a controller is to establish how it interacts with the robot:
     --
-    -- * A controller can listen to more than one robot event at the same time:
+    -- * A controller can react to more than one robot event at the same time:
     --
-    -- > controller :: event1 -> event2 -> command
+    -- > controller :: event1 -> event2 -> action
     --
-    -- * or produce more than one robot command at the same time:
+    -- * or trigger more than one robot action at the same time:
     --
-    -- > controller :: event -> (command1,command2)
+    -- > controller :: event -> (action1,action2)
     --
-    -- * A controller that may or not produce a command can be written using a 'Maybe':
+    -- * Depending on the situation, a controller may or not produce an action:
     --
     -- > controller :: event -> Maybe command
     --
-    -- * A controller that produces one of multiple alternative robot commands can be written as an 'Either':
+    -- * or produce one out of multiple actions:
     --
-    -- > controller :: event -> Either command1 command2
+    -- > controller :: event -> Either action1 action2
     --
-    -- * It is often useful to install multiple simultaneous controllers on the robot. To do so, we just need to create a tuple of controllers:
+    -- * It is often useful to install multiple controllers on the robot:
     --
     -- > (controller1,controller2)
     --
@@ -56,7 +56,7 @@ module Rosy
     --
     -- *** Bumpers
     --
-    -- | When the robot hits of steps away from a wall, as signaled by its three directional bumpers.
+    -- | When the robot hits or steps away from a wall, as signaled by its three directional bumpers.
     , BumperLeft(..)
     , BumperCenter(..)
     , BumperRight(..)
@@ -98,9 +98,9 @@ module Rosy
     -- * The current time.
     , Clock(..)
     --
-    -- ** Robot commands (outputs)
+    -- ** Robot actions (outputs)
     --
-    {-| You can command the robot to do any of the following actions.
+    {-| You can order the robot to perform any of the following actions.
     -}
     --
     -- *** Sounds
@@ -154,31 +154,39 @@ import Prelude
 -- Start by trying out the smallest Rosy program:
 --
 -- > main = simulate ()
--- We are not telling the robot to do anything in particular, and so it will not surprisingly stand still. Not very interesting...
+-- We are not telling the robot to do anything, and so it will not surprisingly stand still. Not very interesting...
 --
--- What about actually moving our robot? We can move our robot forward by setting its desired velocity.
+-- What about actually moving our robot? We can set its desired velocity:
 --
 -- > main = simulate (Velocity 1 0)
 -- This time, the robot will move forward at a constant velocity of /1m\/s/.
 --
--- Ok, but can we vary the velocity of the robot, for example, to make it accelerate at a rate of /1m\/s^2/? Sure, but our controller now needs to become a function, as it needs to know the previous velocity to increase it:
+-- Ok, but how can we vary the velocity of the robot, for example, to make it accelerate? We need to know the previous velocity, and increase it:
 --
 -- > accelerate :: Velocity -> Velocity
 -- > accelerate (Velocity linear angular) = Velocity (linear+1) angular
 -- >
 -- > main = simulate accelerate
 --
--- Indeed, the robot will acelerate at a rate of /1m\/s^2/. This is because the @acelerate@ controller is updating the velocity every second.
+-- If you try this out, the robot will indeed acelerate forward.
 --
--- Thinking further, what if our robot hits a wall? It would be nice if our controller at least produced a warning sound. But how does the controller know when to react? Luckily, our robot comes equipped with a front bumper that will be pressed on contact. Therefore, we can write a @warning@ controller that will wait for the bumper to be pressed, and tell the robot to produce an error sound:
+-- Thinking further, what if our robot hits a wall? It would be nice if our controller at least played a sound to signal that it has crashed. But how does the controller know when to react? Luckily, our robot comes equipped with a front bumper that will be pressed on contact. We can simply write a @warningWall@ controller that will wait for the bumper to be pressed, and when it happens tell the robot to produce an error sound:
 --
--- > warning :: BumperCenter -> Sound
--- > warning (BumperCenter Pressed) = ErrorSound
+-- > warningWall :: BumperCenter -> Sound
+-- > warningWall (BumperCenter Pressed) = ErrorSound
 --
--- Now we can just install both controllers together:
+-- Now we can just install both controllers:
 --
 -- >
--- > main = simulate (accelerate,warning)
+-- > main = simulate (accelerate,warningWall)
+
+
+-- React to events when they happen
+--
+-- > ok :: Maybe BumperCenter -> Maybe Led1
+-- > ok (Just (BumperCenter Pressed)) = Just (Led1 Red)
+-- > ok (Just (BumperCenter Release)) = Just (Led1 Green)
+-- > ok Nothing = 
 --
 -- And you can see the drill. More intesting programs will likely combine several controllers, react to multiple events, or issue multiple commands.
 --

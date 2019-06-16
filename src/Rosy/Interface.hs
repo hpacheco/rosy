@@ -53,5 +53,13 @@ instance (Subscribed a,Published b) => Published (a -> b) where
 -- It receives a robot 'Controller' that does the actual job of interacting with your robot.
 simulate :: Controller a => a -> IO ()
 simulate n = do
-    w <- newWorldState
+    w <- newWorldState world1
+    concurrently_ (startNode (controller n) w) (runViewer w)
+
+-- | The main function that produces a Rosy program.
+-- It receives a robot 'Controller' that does the actual job of interacting with your robot.
+-- It also receives a world in which the robot navigates.
+simulateIn :: Controller a => a -> World -> IO ()
+simulateIn n w = do
+    w <- newWorldState w
     concurrently_ (startNode (controller n) w) (runViewer w)

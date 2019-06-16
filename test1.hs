@@ -27,4 +27,20 @@ onSound (BumperCenter Released) = OffSound
 --        return o
 --    om' = Topic.mapM effect om
 
-main = simulate $ onSound
+randomWalk :: BumperLeft -> BumperCenter -> BumperRight
+           -> CliffLeft -> CliffCenter -> CliffRight
+           -> Velocity
+randomWalk (BumperLeft Pressed) _ _ _ _ _      = Velocity 0 (-1)
+randomWalk (BumperLeft Released) _ _ _ _ _     = Velocity 1 0
+randomWalk _ (BumperCenter Pressed) _ _ _ _    = Velocity 0 1
+randomWalk _ (BumperCenter Released) _ _ _ _ _ = Velocity 1 0
+randomWalk _ _ (BumperRight Pressed) _ _ _     = Velocity 0 1
+randomWalk _ _ (BumperRight Released) _ _ _ _  = Velocity 1 0
+randomWalk _ _ _ (CliffLeft Cliff) _ _         = Velocity 0 (-1)
+randomWalk _ _ _ (CliffLeft Floor) _ _ _       = Velocity 1 0
+randomWalk _ _ _ _ (CliffCenter Cliff) _       = Velocity 0 1
+randomWalk _ _ _ _ (CliffCenter Floor) _       = Velocity 1 0
+randomWalk _ _ _ _ _ (CliffRight Cliff)        = Velocity 0 1
+randomWalk _ _ _ _ _ (CliffRight Floor)        = Velocity 1 0
+
+main = simulate randomWalk
