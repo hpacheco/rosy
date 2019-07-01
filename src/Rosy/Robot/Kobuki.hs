@@ -28,7 +28,9 @@ import Ros.Geometry_msgs.Point as Point
 import Control.Concurrent.STM
 import Control.Monad as Monad
 import Data.Typeable
+import Data.Time.Clock
 import Data.Word as Word
+import Data.Default.Generics as D
 import GHC.Generics as G
 import GHC.Conc
 import System.Process
@@ -90,7 +92,19 @@ readRobotLed2 st = do
 readRobotVelocity :: RobotState -> Node ThreadId
 readRobotVelocity st = do
     v <- subscribe "/mobile-base/commands/velocity"
-    flip runHandler v $ \twist -> atomically $ writeTVar (_robotVel st) twist
+    flip runHandler v $ \twist -> atomically $ do
+        now <- unsafeIOToSTM $ getCurrentTime
+        writeTVar (_robotVel st) (twist,now)
+
+-- kobuki core applies the desired velocity (cmd_vel_timeout) during 0.6s, and zeroes them afterwards
+updateRobotVelocity :: RobotState -> STM Twist
+updateRobotVelocity st = do
+    (vel,since) <- readTVar (_robotVel st)
+    now <- unsafeIOToSTM getCurrentTime
+    let diff = diffUTCTime now since
+    if diff >= 0.6
+        then writeTVar (_robotVel st) (D.def,now) >> return D.def
+        else return vel
 
 -- ** Physics Engine
 
@@ -107,12 +121,14 @@ runRobotPhysics w = liftIO $ do
         let px = Point._x pos
         let py = Point._y pos
         let Controller.Orientation rads = Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o
+        --unsafeIOToSTM $ putStrLn $ "old position " ++ show (px,py)
         
         -- acceleration towards desired velocity
-        vel'' <- readTVar (_robotVel st)
+        vel'' <- updateRobotVelocity st
         let vlin'' = Vector3._x $ Twist._linear vel''
         let vrot'' = Vector3._z $ Twist._angular vel''
         let alin = min robotMaxLinearAccel (vlin'' - vlin)
+        --unsafeIOToSTM $ putStrLn $ "alin " ++ show alin
         let arot = min robotMaxRotationalAccel (vrot'' - vrot)
         
         -- new robot position + velocity (computes linear and angular velocities separately)
@@ -127,16 +143,23 @@ runRobotPhysics w = liftIO $ do
                 else min (vdrag0 + robotWheelDragFriction) 0
         let v' = scalarVec vlin' rads' `addVec` scalarVec vdrag' (rads'+pi/2)
         let (px',py') = (px,py) `addVec` (v' `divVec` robotFrequency)
+        --unsafeIOToSTM $ putStrLn $ "vlin' " ++ show v'
+        --unsafeIOToSTM $ putStrLn $ "new position " ++ show (px',py')
         
         let changeRobotEvent bmp newbool = do
                 oldbool <- readTVar (_eventState $ bmp st)
                 writeTVar (_eventState $ bmp st) newbool
                 when (oldbool /= newbool) $ putTMVar (_eventTrigger $ bmp st) newbool
         
-        let bumper b bmp = changeRobotEvent bmp $ any (==Wall) $ sensorCells w (rads'+b) (px',py')
+        let bumper b bmp = changeRobotEvent bmp $ any (==Wall) $ bumperCells w (rads'+b) (px',py')
         bumper (degreesToRadians 60)    _robotBumperL
         bumper (degreesToRadians 0)     _robotBumperC
         bumper (degreesToRadians (-60)) _robotBumperR
+        
+        let cliff b bmp = changeRobotEvent bmp $ any (==Hole) $ cliffCells w (rads'+b) (px',py')
+        cliff (degreesToRadians 60)    _robotCliffL
+        cliff (degreesToRadians 0)     _robotCliffC
+        cliff (degreesToRadians (-60)) _robotCliffR
         
         let wheel isLeft bmp = changeRobotEvent bmp $ any (==Hole) $ wheelCells w isLeft rads' (px',py')
         wheel True    _robotWheelL
@@ -185,6 +208,7 @@ runRobotPhysics w = liftIO $ do
                     let vlin2 = (magnitudeVec va2) * cos (angleVec va2-rads')
                     let vdrag2 = (magnitudeVec va2) * sin (angleVec va2-rads')
                     -- use old point before collision (as if it did not move)
+                    --unsafeIOToSTM $ putStrLn $ "colision with " ++ show vlin2
                     chgVP vlin2 vdrag2 wa2 (px,py) rads'
 
     forkIO $ forever go
@@ -253,8 +277,13 @@ wheelCells w isLeft rads p = Maybe.maybeToList $ (posCell w) p'
     op = if isLeft then (+) else (-)
     p' = p `addVec` scalarVec (robotRadius/6) (rads `op` pi/2)
 
-sensorCells :: WorldState -> Double -> DPoint -> [Cell]
-sensorCells w rads p = Maybe.catMaybes $ map (posCell w) [sensorPos (rads-degreesToRadians 15) p,sensorPos rads p,sensorPos (rads+degreesToRadians 15) p]
+bumperCells :: WorldState -> Double -> DPoint -> [Cell]
+bumperCells w rads p = Maybe.catMaybes $ map (posCell w) [sensorPos (rads-degreesToRadians 15) p,sensorPos rads p,sensorPos (rads+degreesToRadians 15) p]
+
+cliffCells :: WorldState -> Double -> DPoint -> [Cell]
+cliffCells w rads p = Maybe.maybeToList $ (posCell w) p'
+    where
+    p' = p `addVec` scalarVec (robotRadius*3/4) (rads)
 
 -- consider only one point for a sensor
 sensorPos :: Double -> DPoint -> DPoint

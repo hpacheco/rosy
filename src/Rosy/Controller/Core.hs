@@ -64,7 +64,7 @@ instance (Subscribed a) => Subscribed (Maybe a) where
     subscribed = fmap (fmap (either Just (\() -> Nothing))) subscribed
         
 instance Subscribed () where
-    subscribed = return $ topicRate 1 $ Topic.repeat ()
+    subscribed = return $ topicRate 10 $ Topic.repeat ()
     
 -- | The current time in hours, minutes and seconds.
 data Clock = Clock
@@ -86,7 +86,7 @@ clockFromUTCTime utc = Clock h m s
 instance D.Default Clock
 
 instance Subscribed Clock where
-    subscribed = return $ topicRate 1 $ Topic.repeatM $ liftM clockFromUTCTime getCurrentTime
+    subscribed = return $ topicRate 10 $ Topic.repeatM $ liftM clockFromUTCTime getCurrentTime
     
 class Published a where
     published :: Topic IO a -> Node ()
@@ -135,14 +135,3 @@ instance (Published a) => Published (Maybe a) where
 
 instance Published () where
     published t = runHandler return t >> return ()
-
---buildController :: (Subscribed a,Published b) => (a -> b) -> Node ()
---buildController f = subscribed >>= published . fmap f
---
----- | Runs a new node that subscribes to inputs of type 'a' and publishes outputs of type 'b'.
---runController :: (Subscribed a,Published b) => (a -> b) -> IO ()
---runController f = do
---    nodename <- nextRandom -- generate a random node name
---    --putStrLn $ "Initializing new node with name " ++ show nodename
---    runNode (show nodename) (buildController f)
-

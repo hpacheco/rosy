@@ -138,6 +138,9 @@ module Rosy
     , radiansToDegrees
     , degreesToRadians
     -- ** General-purpose functions.
+    , floorFloating
+    , roundFloating
+    , ceilingFloating
     , module Prelude
     ) where
 

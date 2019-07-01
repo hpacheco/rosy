@@ -19,6 +19,7 @@ import Ros.Geometry_msgs.Pose as Pose
 import qualified Ros.Geometry_msgs.Point as Point
 
 import Control.Concurrent.STM
+import Data.Time.Clock
 import Data.Typeable
 import Data.Default.Generics as D
 import GHC.Generics as G
@@ -40,7 +41,7 @@ data WorldState = WorldState
     , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
     , _worldMap :: World -- static
     , _worldRobot :: RobotState -- static
-    , _worldVel :: EventState Controller.Velocity -- keyop for desired velocity
+    , _worldVel :: TVar Controller.Velocity -- keyop for desired velocity
     } deriving (Typeable, G.Generic)
     
 $(makeLenses ''WorldState)
@@ -57,18 +58,18 @@ newWorldState wmap = do
     display <- newDisplay
     robotInit <- newRobotState
     dimension <- displayDimension display
-    vel <- newEventState D.def
+    vel <- atomically $ newTVar D.def
     return $ WorldState display dimension wmap robotInit vel
     
 world1 :: World
 world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
          ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
          ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]

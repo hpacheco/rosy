@@ -11,6 +11,18 @@ radiansToDegrees a = 180 * a / pi
 degreesToRadians :: Floating a => a -> a
 degreesToRadians rads = rads * pi / 180
 
+-- | Rounds a floating-point number down to the closest integer.
+floorFloating :: RealFrac a => a -> a
+floorFloating = fromIntegral . floor
+
+-- | Rounds a floating-point number.
+roundFloating :: RealFrac a => a -> a
+roundFloating = fromIntegral . round
+
+-- | Rounds a floating-point number up to the closest integer.
+ceilingFloating :: RealFrac a => a -> a
+ceilingFloating = fromIntegral . ceiling
+
 quotBy :: (Real a,Integral b) => a -> a -> b
 quotBy d n = truncate ((toRational n) / (toRational d))
 
@@ -73,7 +85,7 @@ type DCircle = (DPoint,Double)
 
 circleLineIntersection :: DCircle -> DLine -> [DPoint]
 circleLineIntersection ((cx,cy),cr) ((x1,y1),(x2,y2)) =
-    if ((a <= 0.0000001) || (det < 0)) then []
+    if (det < 0) then []
     else if (det == 0) then [(x1 + t * dx,y1 + t * dy)]
     else [(x1 + t1 * dx, y1 + t1 * dy),(x1 + t2 * dx, y1 + t2 * dy)]
   where

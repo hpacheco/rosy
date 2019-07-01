@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables, ViewPatterns #-}
 
 module Rosy.Viewer.Core where
 
@@ -18,6 +18,8 @@ import Ros.Kobuki_msgs.Led as Led
 import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Node
 import Ros.Topic as Topic
+import Ros.Topic.Util as Topic
+import Ros.Rate
 
 import Graphics.Gloss.Interface.IO.Game
 import Graphics.Gloss.Window (Window(..),Dimension(..))
@@ -27,6 +29,7 @@ import Control.Concurrent.STM
 import Control.Monad
 
 import Data.Default.Generics as D
+import Data.Maybe
 
 import GHC.Conc
 
@@ -198,30 +201,32 @@ reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ _w
 -- Values taken from the kobuki_keyop: 0.05, 0.33
 changeVel :: SpecialKey -> WorldState -> IO WorldState
 changeVel k w = atomically $ do
-    putTMVar (_eventTrigger $ _worldVel w) chg
+    modifyTVar (_worldVel w) chg
     return w
   where
     chg = case k of
-        KeyUp    -> over (Controller.velocityLinearLens) (\x -> x+0.5) D.def
-        KeyDown  -> over (Controller.velocityLinearLens) (\x -> x-0.5) D.def
-        KeyLeft  -> over (Controller.velocityAngularLens) (\x -> x+0.33) D.def
-        KeyRight -> over (Controller.velocityAngularLens) (\x -> x-0.33) D.def
+        KeyUp    -> over (Controller.velocityLinearLens) (\x -> x+0.5)   
+        KeyDown  -> over (Controller.velocityLinearLens) (\x -> x-0.5)   
+        KeyLeft  -> over (Controller.velocityAngularLens) (\x -> x+0.33) 
+        KeyRight -> over (Controller.velocityAngularLens) (\x -> x-0.33) 
 
 timeIO :: Float -> WorldState -> IO WorldState
 timeIO t w = return w
 
 writeViewerVelocity :: WorldState -> Node ()
 writeViewerVelocity w = do
-    let viewerVelocityTrigger = Topic.repeatM $ atomically $ do
-            let vel = _worldVel w
-            dv <- takeTMVar (_eventTrigger vel)
-            v <- readTVar (_eventState vel)
-            let v' = v `Controller.addVelocity` dv
-            writeTVar (_eventState vel) v'
-            return $ Controller.velocityToROS v'
+    go <- liftIO $ rateLimiter keyOpFrequency $ atomically $ do
+        v <- readTVar (_worldVel w)
+        if (v==D.def)
+            then return Nothing
+            else return $ Just $ Controller.velocityToROS v
+    let viewerVelocityTrigger = fmap fromJust $ Topic.filter isJust $ Topic.repeatM go
     advertise "/mobile-base/commands/velocity" $ viewerVelocityTrigger
     
 runViewerNodes :: WorldState -> Node ()
 runViewerNodes w = do
     writeViewerVelocity w
+
+keyOpFrequency :: Double
+keyOpFrequency = 10
 

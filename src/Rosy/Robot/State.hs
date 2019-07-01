@@ -20,6 +20,7 @@ import Ros.Geometry_msgs.Pose as Pose
 
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Time.Clock
 import Data.Typeable
 import Data.Default.Generics as D
 import GHC.Generics as G
@@ -40,7 +41,7 @@ type RobotEventState = EventState Bool
 data RobotState = RobotState
     { _robotLed1      :: TVar Led
     , _robotLed2      :: TVar Led
-    , _robotVel       :: TVar Twist -- desired velocity
+    , _robotVel       :: TVar (Twist,UTCTime) -- desired velocity
     , _robotDrag      :: TVar Double -- drag velocity
     , _robotOdom      :: TVar Odometry
     , _robotButton0   :: RobotEventState 

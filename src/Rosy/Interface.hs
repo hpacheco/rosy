@@ -27,7 +27,7 @@ class Controller a where
     controller :: a -> Node ()
 
 instance Published b => Controller b where
-    controller b = published $ Topic.topicRate 1 $ Topic.repeat b
+    controller b = published $ Topic.topicRate 10 $ Topic.repeat b
 
 instance Controller a => Controller [a] where
     controller = mapM_ controller
@@ -44,6 +44,7 @@ instance Controller a => Controller [a] where
 --instance (Nodlet a,Nodlet b,Nodlet c,Nodlet d,Nodlet e) => Nodlet (a,b,c,d,e) where
 --    nodlet (a,b,c,d,e) = nodlet a >> nodlet b >> nodlet c >> nodlet d >> nodlet e
     
+-- The general instance to lift functions to controllers
 instance (Subscribed a,Published b) => Published (a -> b) where
     published tab = do
         ta <- subscribed

@@ -201,7 +201,7 @@ instance D.Default Button0
 
 instance Subscribed Button0 where
     subscribed = do
-        buttons <- subscribe "/mobile-base/commands/button"
+        buttons <- subscribe "/mobile-base/events/button"
         let button0 = Topic.filter ((== 0) . ButtonEvent._button) buttons
         return $ fmap (Button0 . toEnum . fromEnum . ButtonEvent._state) button0
 
@@ -216,7 +216,7 @@ instance D.Default Button1
 
 instance Subscribed Button1 where
     subscribed = do
-        buttons <- subscribe "/mobile-base/commands/button"
+        buttons <- subscribe "/mobile-base/events/button"
         let button1 = Topic.filter ((== 1) . ButtonEvent._button) buttons
         return $ fmap (Button1 . toEnum . fromEnum . ButtonEvent._state) button1
 
@@ -231,7 +231,7 @@ instance D.Default Button2
 
 instance Subscribed Button2 where
     subscribed = do
-        buttons <- subscribe "/mobile-base/commands/button"
+        buttons <- subscribe "/mobile-base/events/button"
         let button2 = Topic.filter ((== 2) . ButtonEvent._button) buttons
         return $ fmap (Button2 . toEnum . fromEnum . ButtonEvent._state) button2
 
@@ -251,8 +251,8 @@ instance D.Default BumperLeft
 
 instance Subscribed BumperLeft where
     subscribed = do
-        bumpers <- subscribe "/mobile-base/commands/bumper"
-        let bumper = Topic.filter ((== 0) . BumperEvent._bumper) bumpers
+        bumpers <- subscribe "/mobile-base/events/bumper"
+        let bumper = Topic.filter ((== bumper_LEFT) . BumperEvent._bumper) bumpers
         return $ fmap (BumperLeft . toEnum . fromEnum . BumperEvent._state) bumper
 
 -- | The front bumper of the robot.
@@ -266,8 +266,8 @@ instance D.Default BumperCenter
 
 instance Subscribed BumperCenter where
     subscribed = do
-        bumpers <- subscribe "/mobile-base/commands/bumper"
-        let bumper = Topic.filter ((== 1) . BumperEvent._bumper) bumpers
+        bumpers <- subscribe "/mobile-base/events/bumper"
+        let bumper = Topic.filter ((== bumper_CENTER) . BumperEvent._bumper) bumpers
         return $ fmap (BumperCenter . toEnum . fromEnum . BumperEvent._state) bumper
 
 -- | The right-sided bumper of the robot.
@@ -281,8 +281,8 @@ instance D.Default BumperRight
 
 instance Subscribed BumperRight where
     subscribed = do
-        bumpers <- subscribe "/mobile-base/commands/bumper"
-        let bumper = Topic.filter ((== 2) . BumperEvent._bumper) bumpers
+        bumpers <- subscribe "/mobile-base/events/bumper"
+        let bumper = Topic.filter ((== bumper_RIGHT) . BumperEvent._bumper) bumpers
         return $ fmap (BumperRight . toEnum . fromEnum . BumperEvent._state) bumper
 
 -- ** Cliffs
@@ -304,7 +304,7 @@ instance D.Default CliffLeft
 
 instance Subscribed CliffLeft where
     subscribed = do
-        cliffs <- subscribe "/mobile-base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/events/cliff"
         let cliff = Topic.filter ((== 0) . CliffEvent._sensor) cliffs
         return $ fmap (CliffLeft . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -319,7 +319,7 @@ instance D.Default CliffCenter
 
 instance Subscribed CliffCenter where
     subscribed = do
-        cliffs <- subscribe "/mobile-base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/events/cliff"
         let cliff = Topic.filter ((== 1) . CliffEvent._sensor) cliffs
         return $ fmap (CliffCenter . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -334,7 +334,7 @@ instance D.Default CliffRight
 
 instance Subscribed CliffRight where
     subscribed = do
-        cliffs <- subscribe "/mobile-base/commands/cliff"
+        cliffs <- subscribe "/mobile-base/events/cliff"
         let cliff = Topic.filter ((== 2) . CliffEvent._sensor) cliffs
         return $ fmap (CliffRight . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -357,7 +357,7 @@ instance D.Default WheelLeft
 
 instance Subscribed WheelLeft where
     subscribed = do
-        wheels <- subscribe "/mobile-base/commands/wheel_drop"
+        wheels <- subscribe "/mobile-base/events/wheel_drop"
         let wheel = Topic.filter ((== wheel_LEFT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelLeft . toEnum . fromEnum . WheelDropEvent._state) wheel
 
@@ -372,7 +372,7 @@ instance D.Default WheelRight
 
 instance Subscribed WheelRight where
     subscribed = do
-        wheels <- subscribe "/mobile-base/commands/wheel_drop"
+        wheels <- subscribe "/mobile-base/events/wheel_drop"
         let wheel = Topic.filter ((== wheel_RIGHT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelRight . toEnum . fromEnum . WheelDropEvent._state) wheel
 
