@@ -54,6 +54,7 @@ module Rosy
     , Button1(..)
     , Button2(..)
     , ButtonStatus(..)
+    , Button(..)
     --
     -- *** Bumpers
     --
@@ -62,6 +63,7 @@ module Rosy
     , BumperCenter(..)
     , BumperRight(..)
     , BumperStatus(..)
+    , Bumper(..)
     --
     -- *** Cliff sensors
     
@@ -71,6 +73,7 @@ module Rosy
     , CliffCenter(..)
     , CliffRight(..)
     , CliffStatus(..)
+    , Cliff(..)
     --
     -- *** Wheels
     --
@@ -79,10 +82,11 @@ module Rosy
     , WheelLeft(..)
     , WheelRight(..)
     , WheelStatus(..)
+    , Wheel(..)
     --
     -- *** Periodic inputs
     --
-    -- | The robot periodically (every second) reports additional information about its status.
+    -- | The robot periodically reports additional information about its status.
     --
     -- * Its current position.
     , Position(..)

@@ -41,37 +41,24 @@ onSound (BumperCenter Released) = OffSound
 --randomWalk (Just (_,_,_,_,_,CliffRight Cliff))      = (Velocity 0 1,Say "cliffr")
 --randomWalk _                                        = (Velocity 4 0,Say "walk")
 
-bumpleft :: BumperLeft -> Velocity
-bumpleft _ = Velocity (-8) (pi/2)
+data Emergency = Emergency Clock
+data Mode = Panic | Ok
 
-bumpcenter :: BumperCenter -> Velocity
-bumpcenter _ = Velocity (-8) (pi/2)
+-- | the controller is in panic mode during 1 second since the last emergency
+mode :: Maybe Emergency -> Clock -> Maybe Mode -> (Mode,Say)
+mode (Just (Emergency old)) new _ = if seconds new-seconds old > 1 then (Ok,Say $ "ok " ++ show old) else (Panic,Say $ "panic " ++ show old)
+mode Nothing new Nothing = (Ok,Say "ok")
+mode Nothing new (Just mode) = (mode,Say "same")
 
-bumpright :: BumperRight -> Velocity
-bumpright _ = Velocity (-8) (pi/2)
+-- | when the robot has a serious event, signal an emergency
+emergency :: Either Bumper Cliff -> Clock -> Emergency
+emergency _ now = Emergency now
 
-cliffleft :: CliffLeft -> Velocity
-cliffleft _ = Velocity (-8) (pi/2)
+-- | move the robot depending on the mode
+walk :: Orientation -> Mode -> Velocity
+walk (Orientation o) Ok = Velocity 5 (roundFloating (o / (pi/2)) * (pi/2))
+walk (Orientation o) Panic = Velocity 0 (pi/2)
 
-cliffcenter :: CliffCenter -> Velocity
-cliffcenter _ = Velocity (-8) (pi/2)
+main = simulate (emergency,mode,walk)
 
-cliffright :: CliffRight -> Velocity
-cliffright _ = Velocity (-8) (pi/2)
 
-walk :: Orientation -> Velocity
-walk (Orientation o) = (Velocity 8 orect)
-    where
-    orect = ceilingFloating (o / (pi/2)) * (pi/2)
-
---randomWalk :: (BumperLeft,BumperCenter,BumperRight,CliffLeft,CliffCenter,CliffRight)
---           -> (Velocity,Say)
---randomWalk ((BumperLeft Pressed,_,_,_,_,_))    = (Velocity 0 (-1),Say "bumpl")
---randomWalk ((_,BumperCenter Pressed,_,_,_,_))  = (Velocity 0 1,Say "bumpc")
---randomWalk ((_,_,BumperRight Pressed,_,_,_))   = (Velocity 0 1,Say "bumpr")
---randomWalk ((_,_,_,CliffLeft Cliff,_,_))       = (Velocity 0 (-1),Say "cliffl")
---randomWalk ((_,_,_,_,CliffCenter Cliff,_))     = (Velocity 0 1,Say "cliffc")
---randomWalk ((_,_,_,_,_,CliffRight Cliff))      = (Velocity 0 1,Say "cliffr")
---randomWalk _                                        = (Velocity 4 0,Say "walk")
-
-main = simulate (bumpleft,bumpcenter,bumpright,cliffleft,cliffcenter,cliffright,walk)

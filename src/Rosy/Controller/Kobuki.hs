@@ -235,6 +235,21 @@ instance Subscribed Button2 where
         let button2 = Topic.filter ((== 2) . ButtonEvent._button) buttons
         return $ fmap (Button2 . toEnum . fromEnum . ButtonEvent._state) button2
 
+data Button = Button
+    { buttonNumber :: Int
+    , buttonStatus :: ButtonStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+$(makeLensesBy (Just . (++"Lens")) ''Button)
+
+fromROSButton :: ButtonEvent -> Button
+fromROSButton (ButtonEvent b s) = Button (fromEnum b) (toEnum $ fromEnum s)
+
+instance Subscribed Button where
+    subscribed = do
+        buttons <- subscribe "/mobile-base/events/button"
+        return $ fmap fromROSButton buttons       
+
 -- ** Bumpers
 
 -- | When a bumper is 'Pressed' against a wall or 'Released' from a wall.
@@ -285,10 +300,28 @@ instance Subscribed BumperRight where
         let bumper = Topic.filter ((== bumper_RIGHT) . BumperEvent._bumper) bumpers
         return $ fmap (BumperRight . toEnum . fromEnum . BumperEvent._state) bumper
 
+data BumperSide = LeftBumper | CenterBumper | RightBumper
+    deriving (Enum, Show, Eq, Ord, Typeable, G.Generic)
+
+data Bumper = Bumper
+    { bumperSide :: BumperSide
+    , bumperStatus :: BumperStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+$(makeLensesBy (Just . (++"Lens")) ''Bumper)
+
+fromROSBumper :: BumperEvent -> Bumper
+fromROSBumper (BumperEvent b s) = Bumper (toEnum $ fromEnum b) (toEnum $ fromEnum s)
+
+instance Subscribed Bumper where
+    subscribed = do
+        bumpers <- subscribe "/mobile-base/events/bumper"
+        return $ fmap fromROSBumper bumpers       
+
 -- ** Cliffs
 
--- | When a cliff (downward height) sensor is looking at the 'Floor' or at a 'Cliff'.
-data CliffStatus = Floor | Cliff
+-- | When a cliff (downward height) sensor is looking at the 'Floor' or at a 'Hole'.
+data CliffStatus = Floor | Hole
     deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
 
 instance D.Default CliffStatus
@@ -338,6 +371,24 @@ instance Subscribed CliffRight where
         let cliff = Topic.filter ((== 2) . CliffEvent._sensor) cliffs
         return $ fmap (CliffRight . toEnum . fromEnum . CliffEvent._state) cliff
 
+data CliffSide = LeftCliff | CenterCliff | RightCliff
+    deriving (Enum, Show, Eq, Ord, Typeable, G.Generic)
+
+data Cliff = Cliff
+    { cliffSide :: CliffSide
+    , cliffStatus :: CliffStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+$(makeLensesBy (Just . (++"Lens")) ''Cliff)
+
+fromROSCliff :: CliffEvent -> Cliff
+fromROSCliff (CliffEvent b s _) = Cliff (toEnum $ fromEnum b) (toEnum $ fromEnum s)
+
+instance Subscribed Cliff where
+    subscribed = do
+        cliffs <- subscribe "/mobile-base/events/cliff"
+        return $ fmap fromROSCliff cliffs       
+
 -- ** Wheels
 
 -- | When one of the robot's wheels is touching the 'Ground' or is suspended in the 'Air'.
@@ -375,4 +426,22 @@ instance Subscribed WheelRight where
         wheels <- subscribe "/mobile-base/events/wheel_drop"
         let wheel = Topic.filter ((== wheel_RIGHT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelRight . toEnum . fromEnum . WheelDropEvent._state) wheel
+
+data WheelSide = LeftWheel | RightWheel
+    deriving (Enum, Show, Eq, Ord, Typeable, G.Generic)
+
+data Wheel = Wheel
+    { wheelSide :: WheelSide
+    , wheelStatus :: WheelStatus
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+$(makeLensesBy (Just . (++"Lens")) ''Wheel)
+
+fromROSWheel :: WheelDropEvent -> Wheel
+fromROSWheel (WheelDropEvent b s) = Wheel (toEnum $ fromEnum b) (toEnum $ fromEnum s)
+
+instance Subscribed Wheel where
+    subscribed = do
+        wheels <- subscribe "/mobile-base/events/wheel_drop"
+        return $ fmap fromROSWheel wheels       
 

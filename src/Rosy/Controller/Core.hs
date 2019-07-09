@@ -19,6 +19,8 @@ import Data.Time.Clock
 import Rosy.Util
 
 import Control.Monad
+import GHC.Conc.Sync
+import Control.Concurrent.STM
 
 -- | Command the robot to speak some sentence.
 data Say = Say String
@@ -31,7 +33,7 @@ instance (Subscribed a,Subscribed b) => Subscribed (a,b) where
     subscribed = do
         a <- subscribed
         b <- subscribed
-        return $ a `everyNew` b
+        return $ a `bothNew` b
 
 instance (Subscribed a,Subscribed b,Subscribed c) => Subscribed (a,b,c) where
     subscribed = liftM (fmap (\(a,(b,c)) -> (a,b,c))) subscribed
