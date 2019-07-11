@@ -1,4 +1,4 @@
-module Main where
+module Rosy.PreProcessor where
 
 import System.Environment
 import System.Directory
