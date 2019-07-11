@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 
 module Rosy.Controller.Core where
 
