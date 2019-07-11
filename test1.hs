@@ -54,7 +54,7 @@ import GHC.Generics (Generic(..))
 --randomWalk (Just (_,_,_,_,_,CliffRight Cliff))      = (Velocity 0 1,Say "cliffr")
 --randomWalk _                                        = (Velocity 4 0,Say "walk")
 
---data Mode = Ok | Panic Clock
+data Mode = Ok | Panic Clock
 --    deriving (Typeable,G.Generic)
 --
 --instance Subscribed Mode where
@@ -65,23 +65,22 @@ import GHC.Generics (Generic(..))
 --    
 --instance D.Default Mode
 --
----- | the controller is in panic mode during 1 second since the last emergency
---mode :: Mode -> Clock -> Mode
---mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
---mode Ok _ = Ok 
---
----- | when the robot has a serious event, signal an emergency
---emergency :: Either Bumper Cliff -> Clock -> Mode
---emergency _ now = Panic now
---
----- | move the robot depending on the mode
---walk :: Orientation -> Mode -> Velocity
---walk (Orientation o) Ok = Velocity 5 0
---walk (Orientation o) (Panic _) = Velocity 0 (pi/2)
+-- | the controller is in panic mode during 1 second since the last emergency
+mode :: Mode -> Clock -> Mode
+mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
+mode Ok _ = Ok 
 
---main = simulate (emergency,mode,walk)
+-- | when the robot has a serious event, signal an emergency
+emergency :: Either Bumper Cliff -> Clock -> Mode
+emergency _ now = Panic now
 
-data Blink = Off | On
+-- | move the robot depending on the mode
+walk :: Orientation -> Mode -> Velocity
+walk (Orientation o) Ok = Velocity 5 0
+walk (Orientation o) (Panic _) = Velocity 0 (pi/2)
+
+main = simulate (emergency,mode,walk)
+
 --    deriving (Typeable,G.Generic)
 --
 --instance Subscribed Blink where
@@ -92,11 +91,27 @@ data Blink = Off | On
 --    
 --instance D.Default Blink
 
-blink :: Blink -> (Led1,Blink)
-blink Off = (Led1 Black,On)
-blink On = (Led1 Red,Off)
+--data Blink = Off | On
+--
+--blink :: Blink -> (Led1,Blink)
+--blink Off = (Led1 Black,On)
+--blink On = (Led1 Red,Off)
+--
+--main = simulate blink
 
-main = simulate blink
+--data Hit = NoHit | Hit
+--warningWall :: BumperCenter -> Maybe Hit
+--warningWall (BumperCenter Pressed)  = Just Hit
+--warningWall (BumperCenter Released) = Nothing
+--
+--playError :: Hit -> Maybe Sound
+--playError Hit = Just OnSound
+--playError NoHit = Nothing
+--
+--accelerate :: Velocity -> Velocity
+--accelerate (Velocity linear angular) = Velocity (linear+1) angular
+--
+--main = simulate (accelerate,warningWall,playError)
 
 
 

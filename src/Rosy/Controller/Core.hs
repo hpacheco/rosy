@@ -39,13 +39,8 @@ import System.IO.Unsafe
 accelerate :: Double -> Topic IO a -> Node (Topic IO a)
 accelerate hz t = do
     mvar <- liftIO $ newEmptyMVar 
-    period <- liftIO $ rateLimiter hz $ readMVar mvar
-    _ <- runHandler (tryPutMVar mvar) t
-    let stream = Topic $ do
-            x <- period
-            return (x,stream)
-    return $ stream
-    
+    _ <- flip runHandler t $ \a -> tryTakeMVar mvar >> putMVar mvar a
+    return $ Topic.topicRate hz $ Topic.repeatM $ readMVar mvar
 
 defaultRate :: Double
 defaultRate = 10
