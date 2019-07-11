@@ -41,7 +41,8 @@ generateInstances = foldr (\d code -> generateDataInstances d $+$ code) mempty
 
 generateDataInstances :: Doc -> Doc
 generateDataInstances name
-    =   text "deriving instance Typeable" <+> name
+    =   text "\n"
+    $+$ text "deriving instance Typeable" <+> name
     $+$ text "deriving instance Generic" <+> name
     $+$ text "instance Default" <+> name
     $+$ (text "instance Subscribed" <+> name <+> text "where"

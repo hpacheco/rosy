@@ -46,8 +46,10 @@ drawIO w = do
     o <- atomically $ readTVar (_robotOdom $ _worldRobot w)
     let wdw1 = map (map drawCell) (_worldMap w)
     wdw2 <- drawBotIO w o
-    wdw3 <- drawMenuIO w o
-    return $ W.hR (const 200) (W.many [W.vhsSquare wdw1,wdw2]) wdw3 (_worldDimension w)
+    --wdw3 <- drawMenuIO w o
+    let wdw = W.many [W.vhsSquare wdw1,wdw2]
+    return wdw
+    --return $ W.hR (const 200) wdw wdw3 (_worldDimension w)
 
 groundColor = greyN 0.4 -- medium dark grey
 wallColor  = makeColor 0.5 0.25 0.25 1 -- redish
