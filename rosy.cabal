@@ -13,6 +13,13 @@ Description:         Simplified ROS bindings, powered by the roshask library.
 
 Data-files: sounds/*.wav
 
+Executable rosy
+  Hs-source-dirs: exec
+  Main-is: Main.hs
+
+  Build-depends:
+    base >= 4.5 && < 6, haskell-src-exts, directory, pretty
+
 Library
   Exposed-modules:     Rosy.Controller.Core
                        Rosy.Controller.Kobuki
@@ -26,7 +33,7 @@ Library
                        Paths_rosy
 
   Build-depends:       base >= 4.5 && < 6,
-                       uuid, lens-family-th, lens-family-core, containers, data-default-generics, time, stm, async, filepath, gloss-window, process, safe,
+                       uuid, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, process, safe,
                        ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, roshask
   if impl(ghcjs)
     Build-depends:

@@ -146,6 +146,7 @@ module Rosy
     , roundFloating
     , ceilingFloating
     , module Prelude
+    ,
     ) where
 
 import Rosy.Controller.Core

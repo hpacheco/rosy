@@ -1,24 +1,37 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric, StandaloneDeriving #-}
+{-# OPTIONS_GHC -F -pgmFrosy #-}
 
 module Main where
     
-import Rosy.Interface
+--import qualified GHC.Generics as G
+--import Data.Typeable
+--    
+--import Rosy.Controller.Core
+--import Rosy.Interface
+--import Rosy
+--
+--import Ros.Node
+--import Ros.Topic as Topic
+--import Ros.Nav_msgs.Odometry as Odometry
+--import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
+--import Ros.Kobuki_msgs.Led as Led
+--
+--import qualified Data.Default.Generics as D
+--
+--import Debug.Trace
+
 import Rosy
+import Rosy.Controller.Core (Published(..),Subscribed(..),publishedMemory,subscribedMemory)
+import Data.Default.Generics (Default(..))
+import Data.Typeable (Typeable(..))
+import GHC.Generics (Generic(..))
 
-import Ros.Node
-import Ros.Topic as Topic
-import Ros.Nav_msgs.Odometry as Odometry
-import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
-import Ros.Kobuki_msgs.Led as Led
-
-import Debug.Trace
-
-onLed :: Velocity -> Led1
-onLed _ = Led1 Orange
-
-onSound :: BumperCenter -> Sound
-onSound (BumperCenter Pressed) = OnSound
-onSound (BumperCenter Released) = OffSound
+--onLed :: Velocity -> Led1
+--onLed _ = Led1 Orange
+--
+--onSound :: BumperCenter -> Sound
+--onSound (BumperCenter Pressed) = OnSound
+--onSound (BumperCenter Released) = OffSound
 
 --printOdom1 :: Odometry -> IO ()
 --printOdom1 o = putStrLn $ "1 " ++ show (TwistWithCovariance._twist $ Odometry._twist o)
@@ -41,24 +54,49 @@ onSound (BumperCenter Released) = OffSound
 --randomWalk (Just (_,_,_,_,_,CliffRight Cliff))      = (Velocity 0 1,Say "cliffr")
 --randomWalk _                                        = (Velocity 4 0,Say "walk")
 
-data Emergency = Emergency Clock
-data Mode = Panic | Ok
+--data Mode = Ok | Panic Clock
+--    deriving (Typeable,G.Generic)
+--
+--instance Subscribed Mode where
+--    subscribed = subscribedMemory
+--    
+--instance Published Mode where
+--    published = publishedMemory
+--    
+--instance D.Default Mode
+--
+---- | the controller is in panic mode during 1 second since the last emergency
+--mode :: Mode -> Clock -> Mode
+--mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
+--mode Ok _ = Ok 
+--
+---- | when the robot has a serious event, signal an emergency
+--emergency :: Either Bumper Cliff -> Clock -> Mode
+--emergency _ now = Panic now
+--
+---- | move the robot depending on the mode
+--walk :: Orientation -> Mode -> Velocity
+--walk (Orientation o) Ok = Velocity 5 0
+--walk (Orientation o) (Panic _) = Velocity 0 (pi/2)
 
--- | the controller is in panic mode during 1 second since the last emergency
-mode :: Maybe Emergency -> Clock -> Maybe Mode -> (Mode,Say)
-mode (Just (Emergency old)) new _ = if seconds new-seconds old > 1 then (Ok,Say $ "ok " ++ show old) else (Panic,Say $ "panic " ++ show old)
-mode Nothing new Nothing = (Ok,Say "ok")
-mode Nothing new (Just mode) = (mode,Say "same")
+--main = simulate (emergency,mode,walk)
 
--- | when the robot has a serious event, signal an emergency
-emergency :: Either Bumper Cliff -> Clock -> Emergency
-emergency _ now = Emergency now
+data Blink = Off | On
+--    deriving (Typeable,G.Generic)
+--
+--instance Subscribed Blink where
+--    subscribed = subscribedMemory
+--    
+--instance Published Blink where
+--    published = publishedMemory
+--    
+--instance D.Default Blink
 
--- | move the robot depending on the mode
-walk :: Orientation -> Mode -> Velocity
-walk (Orientation o) Ok = Velocity 5 (roundFloating (o / (pi/2)) * (pi/2))
-walk (Orientation o) Panic = Velocity 0 (pi/2)
+blink :: Blink -> (Led1,Blink)
+blink Off = (Led1 Black,On)
+blink On = (Led1 Red,Off)
 
-main = simulate (emergency,mode,walk)
+main = simulate blink
+
 
 
