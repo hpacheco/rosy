@@ -48,7 +48,7 @@ drawIO w = do
     wdw2 <- drawBotIO w o
     --wdw3 <- drawMenuIO w o
     let wdw = W.many [W.vhsSquare wdw1,wdw2]
-    return wdw
+    return $ wdw (_worldDimension w)
     --return $ W.hR (const 200) wdw wdw3 (_worldDimension w)
 
 groundColor = greyN 0.4 -- medium dark grey
