@@ -11,10 +11,8 @@ import Language.Haskell.Exts.SrcLoc
 
 import Text.PrettyPrint
 
-main = do
-    args <- getArgs
-    let from = args!!1
-    let to = args!!2
+preprocessor :: FilePath -> FilePath -> IO ()
+preprocessor from to = do
     copyFile from to
     fromhs <- parseFile from
     appendInstances to (moduleDatas fromhs)
