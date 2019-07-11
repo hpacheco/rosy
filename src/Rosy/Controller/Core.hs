@@ -43,7 +43,7 @@ import Graphics.Gloss.Interface.Environment
 #if defined(ghcjs_HOST_OS)
 reportMessage :: String -> IO ()
 reportMessage msg = do
-    reportRuntimeMessage msg
+    reportRuntimeMessage (msg++"\n")
 #else
 reportMessage :: String -> IO ()
 reportMessage msg = putStrLn msg
