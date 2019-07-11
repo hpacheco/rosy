@@ -11,8 +11,6 @@ Build-type:          Simple
 Tested-with:         GHC >= 7.6
 Description:         Simplified ROS bindings, powered by the roshask library.
 
-Data-files: sounds/*.wav
-
 Executable rosypp
   Hs-source-dirs: .
   Main-is: Main.hs
