@@ -1,0 +1,31 @@
+Name:                rosy-pp
+Version:             0.1
+Synopsis:            Painless bindings for the ROS robotics framework.
+License:             BSD3
+Cabal-version:       >=1.10
+Author:              Hugo Pacheco
+Maintainer:          Hugo Pacheco <hpacheco@di.uminho.pt>
+Copyright:           (c) 2019 Hugo Pacheco
+Category:            Robotics
+Build-type:          Simple
+Tested-with:         GHC >= 7.6
+Description:         Simplified ROS bindings, powered by the roshask library.
+
+Data-files: sounds/*.wav
+
+Executable rosypp
+  Hs-source-dirs: prepro
+  Main-is: Main.hs
+
+  Build-depends:
+    base >= 4.5 && < 6, haskell-src-exts, directory, pretty
+
+Library
+  Exposed-modules:     Rosy.PreProcessor
+
+  Build-depends:       base >= 4.5 && < 6, haskell-src-exts, directory, pretty
+
+  GHC-Options:         -Wall
+  Hs-Source-Dirs:      prepro
+  default-language: Haskell2010
+

@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, StandaloneDeriving #-}
-{-# OPTIONS_GHC -F -pgmFrosy #-}
+{-# OPTIONS_GHC -F -pgmFrosypp #-}
 
 module Main where
     
@@ -54,7 +54,6 @@ import GHC.Generics (Generic(..))
 --randomWalk (Just (_,_,_,_,_,CliffRight Cliff))      = (Velocity 0 1,Say "cliffr")
 --randomWalk _                                        = (Velocity 4 0,Say "walk")
 
-data Mode = Ok | Panic Clock
 --    deriving (Typeable,G.Generic)
 --
 --instance Subscribed Mode where
@@ -65,6 +64,8 @@ data Mode = Ok | Panic Clock
 --    
 --instance D.Default Mode
 --
+data Mode = Ok | Panic Clock
+
 -- | the controller is in panic mode during 1 second since the last emergency
 mode :: Mode -> Clock -> Mode
 mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
