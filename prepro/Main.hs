@@ -1,5 +1,6 @@
 module Main where
 
+import System.Environment
 import Rosy.PreProcessor
 
 main = do
