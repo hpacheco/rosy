@@ -35,6 +35,20 @@ import Control.Concurrent
 import Unsafe.Coerce
 import System.IO.Unsafe
 
+#if defined(ghcjs_HOST_OS)
+import CodeWorld
+#else
+#endif
+
+#if defined(ghcjs_HOST_OS)
+reportMessage :: String -> IO ()
+reportMessage msg = do
+    reportRuntimeMessage msg
+#else
+reportMessage :: String -> IO ()
+reportMessage msg = putStrLn msg
+#endif
+
 
 accelerate :: Double -> Topic IO a -> Node (Topic IO a)
 accelerate hz t = do
@@ -243,7 +257,7 @@ sndT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe b))
 sndT = fmap3 snd
     
 instance Published Say where
-    published = publishedROS $ \t -> runHandler (\(Say str) -> putStrLn str) t >> return ()
+    published = publishedROS $ \t -> runHandler (\(Say str) -> reportMessage str) t >> return ()
 
 instance (Published a,Published b) => Published (a,b) where
     published t = do
