@@ -22,7 +22,6 @@ Library
                        Rosy.Viewer.State
                        Rosy.Interface
                        Rosy.Util
-                       Rosy.PreProcessor
                        Rosy
                        Paths_rosy
 
