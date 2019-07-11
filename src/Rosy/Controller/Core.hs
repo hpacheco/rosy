@@ -36,7 +36,7 @@ import Unsafe.Coerce
 import System.IO.Unsafe
 
 #if defined(ghcjs_HOST_OS)
-import CodeWorld
+import Graphics.Gloss.Interface.Environment
 #else
 #endif
 
