@@ -88,13 +88,13 @@ drawMenuIO w o = do
     
     -- draw menus
     let back = Color menuColor . W.rectangleSolid
-    let positionx   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionX: " ++ printf "%.2f" px ++ " cm")
-    let positiony   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionY: " ++ printf "%.2f" py ++ " cm")
-    let orientation = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Orientation: " ++ printf "%.2f" rads ++ " rads")
-    let lvelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" cm/s")
-    let avelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Angular Velocity: " ++ printf "%.2f" vrot ++" rads/s")
-    let info1 = W.many [back,W.hs [positionx,positiony,orientation]]
-    let info2 = W.many [back,W.hs [lvelocity,avelocity]]
+    let positionx   = Translate (-90) 0 . Scale 0.13 0.13 . W.text ("PositionX: " ++ printf "%.2f" px ++ " cm")
+    let positiony   = Translate (-90) 0 . Scale 0.13 0.13 . W.text ("PositionY: " ++ printf "%.2f" py ++ " cm")
+    let orientation = Translate (-90) 0 . Scale 0.13 0.13 . W.text ("Orientation: " ++ printf "%.2f" rads ++ " rads")
+    let lvelocity   = Translate (-90) 0 . Scale 0.13 0.13 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" cm/s")
+    let avelocity   = Translate (-90) 0 . Scale 0.13 0.13 . W.text ("Angular Velocity: " ++ printf "%.2f" vrot ++" rads/s")
+    let info1 = W.hs [positionx,positiony,orientation]
+    let info2 = W.hs [lvelocity,avelocity]
     
     return $ W.vT (const 50) info1 (W.vB (const 50) W.empty info2)
 

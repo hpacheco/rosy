@@ -215,7 +215,7 @@ clockFromUTCTime utc = Clock h m s
 instance D.Default Clock
 
 instance Subscribed Clock where
-    subscribed = return $ Topic.topicRate defaultRate $ Topic.repeatM $ liftM (return . clockFromUTCTime) getCurrentTime
+    subscribed = return $ Topic.topicRate 1 $ Topic.repeatM $ liftM (return . clockFromUTCTime) getCurrentTime
     
 class Published a where
     published :: Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
