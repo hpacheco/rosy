@@ -46,10 +46,10 @@ drawIO w = do
     o <- atomically $ readTVar (_robotOdom $ _worldRobot w)
     let wdw1 = map (map drawCell) (_worldMap w)
     wdw2 <- drawBotIO w o
-    --wdw3 <- drawMenuIO w o
+    wdw3 <- drawMenuIO w o
     let wdw = W.many [W.vhsSquare wdw1,wdw2]
-    return $ wdw (_worldDimension w)
-    --return $ W.hR (const 200) wdw wdw3 (_worldDimension w)
+    --return $ wdw (_worldDimension w)
+    return $ W.many [wdw,wdw3] (_worldDimension w)
 
 groundColor = greyN 0.4 -- medium dark grey
 wallColor  = makeColor 0.5 0.25 0.25 1 -- redish
@@ -87,15 +87,16 @@ drawMenuIO w o = do
     let Controller.Orientation rads = Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o
     
     -- draw menus
-    let back = Color menuColor . W.rectangleSolid
+    --let back = Color menuColor . W.rectangleSolid
     let positionx   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionX: " ++ printf "%.2f" px ++ " cm")
     let positiony   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("PositionY: " ++ printf "%.2f" py ++ " cm")
     let orientation = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Orientation: " ++ printf "%.2f" rads ++ " rads")
     let lvelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" cm/s")
     let avelocity   = Translate (-90) 0 . Scale 0.1 0.1 . W.text ("Angular Velocity: " ++ printf "%.2f" vrot ++" rads/s")
-    let info = W.vs [positionx,positiony,orientation,lvelocity,avelocity]
+    let info1 = W.hs [positionx,positiony,orientation]
+    let info2 = W.hs [lvelocity,avelocity]
     
-    return $ W.many [back,info]
+    return $ W.vT (const 50) info1 (W.vB (const 50) W.empty info2)
 
 ledColor :: Led -> Color
 ledColor l = case Led._value l of

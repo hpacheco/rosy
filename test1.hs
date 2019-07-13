@@ -64,23 +64,23 @@ import GHC.Generics (Generic(..))
 --    
 --instance D.Default Mode
 --
-data Mode = Ok | Panic Clock
-
--- | the controller is in panic mode during 1 second since the last emergency
-mode :: Mode -> Clock -> Mode
-mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
-mode Ok _ = Ok 
-
--- | when the robot has a serious event, signal an emergency
-emergency :: Either Bumper Cliff -> Clock -> Mode
-emergency _ now = Panic now
-
--- | move the robot depending on the mode
-walk :: Orientation -> Mode -> Velocity
-walk (Orientation o) Ok = Velocity 5 0
-walk (Orientation o) (Panic _) = Velocity 0 (pi/2)
-
-main = simulate (emergency,mode,walk)
+--data Mode = Ok | Panic Clock
+--
+---- | the controller is in panic mode during 1 second since the last emergency
+--mode :: Mode -> Clock -> Mode
+--mode (Panic old) new = if seconds new-seconds old > 1 then Ok else Panic old
+--mode Ok _ = Ok 
+--
+---- | when the robot has a serious event, signal an emergency
+--emergency :: Either Bumper Cliff -> Clock -> Mode
+--emergency _ now = Panic now
+--
+---- | move the robot depending on the mode
+--walk :: Orientation -> Mode -> Velocity
+--walk (Orientation o) Ok = Velocity 5 0
+--walk (Orientation o) (Panic _) = Velocity 0 (pi/2)
+--
+--main = simulate (emergency,mode,walk)
 
 --    deriving (Typeable,G.Generic)
 --
@@ -114,5 +114,24 @@ main = simulate (emergency,mode,walk)
 --
 --main = simulate (accelerate,warningWall,playError)
 
+
+
+moveTo :: Position -> (Position,Orientation,Velocity) -> Velocity
+moveTo dest (src,Orientation angle,vel) = Velocity vlin' vrot'
+    where
+    distance = subPos dest src
+    vrot' = anglePos distance - angle
+    vlin' = if vrot' > 0.1 then 0 else magnitudePos distance
+
+subPos :: Position -> Position -> Position
+subPos (Position x1 y1) (Position x2 y2) = Position (x1-x2) (y1-y2)
+
+magnitudePos :: Position -> Double
+magnitudePos (Position x y) = sqrt (x^2 + y^2)
+
+anglePos :: Position -> Double
+anglePos (Position x y) = atan2 y x
+
+main = simulate (moveTo (Position (-80) 100))
 
 

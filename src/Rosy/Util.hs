@@ -43,7 +43,7 @@ crossProdVec v1 v2 = magnitudeVec v1 * magnitudeVec v2 * sin (abs $ angleVec v1 
 magnitudeVec :: Floating a => (a,a) -> a
 magnitudeVec (x,y) = sqrt (x * x + y * y)
 
--- | The angle of this vector, relative to the +ve x-axis.
+-- | The angle of this vector, relative to the x-axis.
 angleVec :: RealFloat a => (a,a) -> a
 angleVec (x, y) = atan2 y x
 

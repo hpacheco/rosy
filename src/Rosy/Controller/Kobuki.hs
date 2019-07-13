@@ -141,7 +141,7 @@ pointToPosition p = Position (Point._x p) (Point._y p)
 
 instance Subscribed Position where
     subscribed = subscribedROS $ do
-        odom <- subscribe "odom" >>= accelerate defaultRate
+        odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
         
 -- | The orientation of the robot.
@@ -175,12 +175,12 @@ orientationToROS (Orientation yaw) = Quaternion qx qy qz qw
 
 instance Subscribed Orientation where
     subscribed = subscribedROS $ do
-        odom <- subscribe "odom" >>= accelerate defaultRate
+        odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) odom
         
 instance Subscribed Velocity where
     subscribed = subscribedROS $ do
-        odom <- subscribe "odom" >>= accelerate defaultRate
+        odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (velocityFromROS . TwistWithCovariance._twist . Odometry._twist) odom
         
 -- ** Buttons
