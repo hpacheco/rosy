@@ -116,15 +116,19 @@ import GHC.Generics (Generic(..))
 
 
 
-moveTo :: Position -> (Position,Orientation,Velocity) -> Velocity
-moveTo dest (src,Orientation angle,vel) = Velocity vlin' vrot'
+moveTo :: Position -> (Position,Orientation,Velocity) -> (Velocity,Say)
+moveTo dest (src,Orientation angle,vel) = (vel',Say $ show vel')
     where
     distance = subPos dest src
     vrot' = anglePos distance - angle
-    vlin' = if vrot' > 0.1 then 0 else magnitudePos distance
+    vlin' = if vrot' < 0.1 then magnitudePos distance else 0
+    vel' = subVel (Velocity vlin' vrot') vel
 
 subPos :: Position -> Position -> Position
 subPos (Position x1 y1) (Position x2 y2) = Position (x1-x2) (y1-y2)
+
+subVel :: Velocity -> Velocity -> Velocity
+subVel (Velocity x1 y1) (Velocity x2 y2) = Velocity (x1-x2) (y1-y2)
 
 magnitudePos :: Position -> Double
 magnitudePos (Position x y) = sqrt (x^2 + y^2)
@@ -132,6 +136,18 @@ magnitudePos (Position x y) = sqrt (x^2 + y^2)
 anglePos :: Position -> Double
 anglePos (Position x y) = atan2 y x
 
-main = simulate (moveTo (Position (-80) 100))
+arrived (Position x1 y1) (Position x2 y2) = abs (x1-x2) < 0.1 && abs (y1-y2) < 0.1
+
+data Path = Path [Position]
+
+movePath :: Path -> (Position,Orientation,Velocity) -> ((Velocity,Say),Path)
+movePath (Path []) (p,o,v) = movePath path (p,o,v)
+movePath (Path (d:ds)) (p,o,v) = if arrived d p
+  then movePath (Path ds) (p,o,v)
+  else (moveTo d (p,o,v),Path (d:ds))
+
+path = Path [Position (-60) 100,Position 70 80,Position 70 (-80),Position (-10) (-80)]
+
+main = simulate (movePath)
 
 

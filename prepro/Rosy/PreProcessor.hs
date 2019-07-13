@@ -44,10 +44,10 @@ generateDataInstances name
     =   text "\n"
     $+$ text "deriving instance Typeable" <+> name
     $+$ text "deriving instance Generic" <+> name
-    $+$ text "instance Default" <+> name
-    $+$ (text "instance Subscribed" <+> name <+> text "where"
+    $+$ text "instance {-# OVERLAPPABLE #-} Default" <+> name
+    $+$ (text "instance {-# OVERLAPPABLE #-} Subscribed" <+> name <+> text "where"
         $+$ nest 5 (text "subscribed = subscribedMemory"))
-    $+$ (text "instance Published" <+> name <+> text "where"
+    $+$ (text "instance {-# OVERLAPPABLE #-} Published" <+> name <+> text "where"
         $+$ nest 5 (text "published = publishedMemory"))
     
     
