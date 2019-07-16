@@ -188,7 +188,7 @@ runRobotPhysics w = liftIO $ do
                     chgVP vlin' vdrag' vrot' (px',py') rads'
                 Just (cp,cn) -> do
                     -- elasticity of collision
-                    let e = 0.5
+                    let e = 0.1
                     -- linear velocity before collision
                     let va1 = scalarVec vlin' rads' `addVec` scalarVec vdrag' (rads'+pi/2)
                     -- angular velocity before collision
