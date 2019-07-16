@@ -18,14 +18,14 @@ import Control.Monad
 prettyDoc :: Pretty a => a -> Doc
 prettyDoc = prettyPrimWithMode (defaultMode { layout = PPNoLayout }) 
 
-preprocessor :: FilePath -> FilePath -> IO ()
-preprocessor from to = do
+preprocessor :: String -> FilePath -> FilePath -> IO ()
+preprocessor name from to = do
     copyFile from to
-    fromhs <- parseFile from
+    fromhs <- parseFile name from
     appendInstances to (moduleDatas fromhs) (moduleDefaults fromhs)
 
-parseFile :: FilePath -> IO (Module SrcSpanInfo)
-parseFile fp = do
+parseFile :: String -> FilePath -> IO (Module SrcSpanInfo)
+parseFile name fp = do
     str <- readFile fp
     let mb = readExtensions str
     let mblang = join $ fmap fst mb
@@ -35,7 +35,7 @@ parseFile fp = do
     let res = parseWithMode mode'' str
     case res of
         ParseOk code -> return code
-        ParseFailed l str -> error $ show l ++ ": " ++ show str
+        ParseFailed l str -> error $ name ++ ":" ++ show (srcLine l) ++ ":" ++ show (srcColumn l) ++ ":\n" ++ str
 
 declDefaults :: Decl SrcSpanInfo -> [Doc]
 declDefaults (InstDecl _ _ r _) = instRuleDefaults r

@@ -5,6 +5,7 @@ import Rosy.PreProcessor
 
 main = do
     args <- getArgs
+    let name = args!!0
     let from = args!!1
     let to = args!!2
-    preprocessor from to
+    preprocessor name from to
