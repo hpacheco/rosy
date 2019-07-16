@@ -2,6 +2,7 @@ module Rosy.PreProcessor where
 
 import System.Directory
 import System.IO
+import System.Exit
 
 import Language.Haskell.Exts (readExtensions)
 import Language.Haskell.Exts.Parser
@@ -12,14 +13,26 @@ import Language.Haskell.Exts.SrcLoc
 import Text.PrettyPrint
 
 import Data.List as List
+import Data.Typeable
 
 import Control.Monad
+import Control.Exception
+
+data PreProcessorException = PreProcessorException String Int Int Doc
+  deriving Show
+instance Exception PreProcessorException where
+    toException = SomeException
+    fromException (SomeException x) = cast x
 
 prettyDoc :: Pretty a => a -> Doc
 prettyDoc = prettyPrimWithMode (defaultMode { layout = PPNoLayout }) 
 
 preprocessor :: String -> FilePath -> FilePath -> IO ()
-preprocessor name from to = do
+preprocessor name from to = catch (runPreprocessor name from to) $ \(PreProcessorException name l c msg) -> do
+    die $ show $ text name <> char ':' <> text (show l) <> char ':' <> text (show c) <> char ':' $+$ nest 5 msg
+
+runPreprocessor :: String -> FilePath -> FilePath -> IO ()
+runPreprocessor name from to = do
     copyFile from to
     fromhs <- parseFile name from
     appendInstances to (moduleDatas fromhs) (moduleDefaults fromhs)
@@ -35,7 +48,7 @@ parseFile name fp = do
     let res = parseWithMode mode'' str
     case res of
         ParseOk code -> return code
-        ParseFailed l str -> error $ name ++ ":" ++ show (srcLine l) ++ ":" ++ show (srcColumn l) ++ ":\n" ++ str
+        ParseFailed l str -> throwIO $ PreProcessorException name (srcLine l) (srcColumn l) (text str)
 
 declDefaults :: Decl SrcSpanInfo -> [Doc]
 declDefaults (InstDecl _ _ r _) = instRuleDefaults r
