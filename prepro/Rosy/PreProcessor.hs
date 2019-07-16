@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Rosy.PreProcessor where
 
 import System.Directory
@@ -18,7 +20,11 @@ import Data.Typeable
 import Control.Monad
 import Control.Exception
 
-import Control.Applicative hiding ((<>))
+#if __GLASGOW_HASKELL__ >= 710
+import Prelude hiding ((<>))
+#else
+import Prelude
+#endif
 
 data PreProcessorException = PreProcessorException String Int Int Doc
   deriving Show
