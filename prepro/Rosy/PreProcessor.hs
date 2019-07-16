@@ -18,6 +18,8 @@ import Data.Typeable
 import Control.Monad
 import Control.Exception
 
+import Control.Applicative hiding ((<>))
+
 data PreProcessorException = PreProcessorException String Int Int Doc
   deriving Show
 instance Exception PreProcessorException where
