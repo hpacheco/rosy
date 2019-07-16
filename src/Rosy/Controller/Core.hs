@@ -125,7 +125,7 @@ getUserMemory a = modifyMVar userMemories $ \memories -> do
             v <- newTVarIO a
             return (Map.insert ty (unsafeCoerce v) memories,v)
 
-publishedMemory :: (Show a,D.Default a,Typeable a) => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+publishedMemory :: (D.Default a,Typeable a) => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
 publishedMemory t = do
     tv <- liftIO $ getUserMemory D.def
     let write m = do
@@ -135,10 +135,9 @@ publishedMemory t = do
                 Just a -> writeTVar tv a
     return $ fmap write t
 
-subscribedMemory :: (Show a,D.Default a,Typeable a) => Node (Topic IO (STM a))
+subscribedMemory :: (D.Default a,Typeable a) => Node (Topic IO (STM a))
 subscribedMemory = do
-    let a = D.def
-    tv <- liftIO $ getUserMemory a
+    tv <- liftIO $ getUserMemory D.def
     return $ Topic.topicRate defaultRate $ Topic.repeat $ readTVar tv
 
 -- * Controllers
