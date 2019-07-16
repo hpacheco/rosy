@@ -3,6 +3,7 @@ module Rosy.PreProcessor where
 import System.Directory
 import System.IO
 
+import Language.Haskell.Exts (readExtensions)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Exts.Syntax
 import Language.Haskell.Exts.Pretty
@@ -11,6 +12,8 @@ import Language.Haskell.Exts.SrcLoc
 import Text.PrettyPrint
 
 import Data.List as List
+
+import Control.Monad
 
 prettyDoc :: Pretty a => a -> Doc
 prettyDoc = prettyPrimWithMode (defaultMode { layout = PPNoLayout }) 
@@ -24,7 +27,13 @@ preprocessor from to = do
 parseFile :: FilePath -> IO (Module SrcSpanInfo)
 parseFile fp = do
     str <- readFile fp
-    case parse str of
+    let mb = readExtensions str
+    let mblang = join $ fmap fst mb
+    let exts = maybe [] snd mb
+    let mode' = defaultParseMode { extensions = exts }
+    let mode'' = case mblang of { Nothing -> mode'; Just lang -> mode' {baseLanguage = lang } }
+    let res = parseWithMode mode'' str
+    case res of
         ParseOk code -> return code
         ParseFailed l str -> error $ show l ++ ": " ++ show str
 

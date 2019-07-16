@@ -125,7 +125,7 @@ getUserMemory a = modifyMVar userMemories $ \memories -> do
             v <- newTVarIO a
             return (Map.insert ty (unsafeCoerce v) memories,v)
 
-publishedMemory :: (D.Default a,Typeable a) => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+publishedMemory :: (Show a,D.Default a,Typeable a) => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
 publishedMemory t = do
     tv <- liftIO $ getUserMemory D.def
     let write m = do
@@ -135,10 +135,11 @@ publishedMemory t = do
                 Just a -> writeTVar tv a
     return $ fmap write t
 
-subscribedMemory :: (D.Default a,Typeable a) => Node (Topic IO (STM a))
+subscribedMemory :: (Show a,D.Default a,Typeable a) => Node (Topic IO (STM a))
 subscribedMemory = do
-    tv <- liftIO $ getUserMemory D.def
-    return $ Topic.topicRate defaultRate $ Topic.repeat (readTVar tv)
+    let a = D.def
+    tv <- liftIO $ getUserMemory a
+    return $ Topic.topicRate defaultRate $ Topic.repeat $ readTVar tv
 
 -- * Controllers
 
@@ -218,6 +219,7 @@ instance Subscribed Clock where
     subscribed = return $ Topic.topicRate 1 $ Topic.repeatM $ liftM (return . clockFromUTCTime) getCurrentTime
     
 class Published a where
+    -- the output topic preserves the periodicity of the input topic
     published :: Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
     
 -- writes to a transactional buffer, and buffer gets advertised to ROS
@@ -235,36 +237,48 @@ publishedROS adv t = do
                 Just a -> writeTChan chan a
     return $ fmap put t
     
-interleaveT :: Topic IO (m ()) -> Topic IO (m ()) -> Topic IO (m ())
-interleaveT t1 t2 = fmap (either id id) (t1 <+> t2)
+--interleaveT :: Topic IO (m ()) -> Topic IO (m ()) -> Topic IO (m ())
+--interleaveT t1 t2 = fmap (either id id) (t1 <+> t2)
     
-leftT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe a))
-leftT tab = fmap2 go tab
-    where
-    go (Just (Left a)) = Just a
-    go _ = Nothing
+--leftT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe a))
+--leftT tab = fmap2 go tab
+--    where
+--    go (Just (Left a)) = Just a
+--    go _ = Nothing
+--
+--rightT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe b))
+--rightT tab = fmap2 go tab
+--    where
+--    go (Just (Right b)) = Just b
+--    go _ = Nothing
 
-rightT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe b))
-rightT tab = fmap2 go tab
-    where
-    go (Just (Right b)) = Just b
-    go _ = Nothing
-
-fstT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe a))
-fstT = fmap3 fst
-
-sndT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe b))
-sndT = fmap3 snd
+--fstT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe a))
+--fstT = fmap3 fst
+--
+--sndT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe b))
+--sndT = fmap3 snd
+    
+mergeT :: Monad m => Topic IO (m ()) -> Topic IO (m ()) -> Topic IO (m ())
+mergeT t1 t2 = fmap (uncurry (>>)) $ Topic.bothNew t1 t2
     
 instance Published Say where
     published = publishedROS $ \t -> runHandler (\(Say str) -> reportMessage str) t >> return ()
 
 instance (Published a,Published b) => Published (a,b) where
-    published t = do
-        (ta,tb) <- liftIO $ fmap (fstT >< sndT) $ Topic.tee t
+    published tab = do
+        pair <- liftIO $ newTVarIO (error "no pair value")
+        let t' = fmap (\mx -> mx >>= writeTVar pair) tab
+        let ta = flip fmap tab $ const $ liftM (fmap fst) $ readTVar pair
+        let tb = flip fmap tab $ const $ liftM (fmap snd) $ readTVar pair
         ta' <- published ta
         tb' <- published tb
-        return $ fmap (uncurry (>>)) $ Topic.bothNew ta' tb'
+        return $ mergeT t' $ mergeT ta' tb'
+    
+    --published t = do
+    --    (ta,tb) <- liftIO $ fmap (fstT >< sndT) $ Topic.tee t
+    --    ta' <- published ta
+    --    tb' <- published tb
+    --    return $ mergeT ta' tb'
 
 instance (Published a,Published b,Published c) => Published (a,b,c) where
     published t = published $ fmap3 (\(a,b,c) -> (a,(b,c))) t
@@ -289,10 +303,29 @@ instance (Published a,Published b,Published c,Published d,Published e,Published 
 
 instance (Published a,Published b) => Published (Either a b) where
     published tab = do
-        (ta,tb) <- liftIO $ fmap (leftT >< rightT) $ Topic.tee tab
+        pair <- liftIO $ newTVarIO (error "no sum value")
+        let t' = fmap (\mx -> mx >>= writeTVar pair) tab
+        let ta = flip fmap tab $ const $ do
+                mbe <- readTVar pair
+                case mbe of
+                    Nothing -> return Nothing
+                    Just (Left a) -> return $ Just a
+                    Just (Right b) -> return Nothing
+        let tb = flip fmap tab $ const $ do
+                mbe <- readTVar pair
+                case mbe of
+                    Nothing -> return Nothing
+                    Just (Left a) -> return Nothing
+                    Just (Right b) -> return $ Just b
         ta' <- published ta
         tb' <- published tb
-        return $ interleaveT ta' tb'
+        return $ mergeT t' $ mergeT ta' tb'
+    
+    --published tab = do
+    --    (ta,tb) <- liftIO $ fmap (leftT >< rightT) $ Topic.tee tab
+    --    ta' <- published ta
+    --    tb' <- published tb
+    --    return $ interleaveT ta' tb'
 
 instance (Published a) => Published (Maybe a) where
     published t = do
