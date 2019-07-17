@@ -25,6 +25,9 @@ import Ros.Topic.Util as Topic
 import Unsafe.Coerce
 import System.IO.Unsafe
 
+control :: Controller a => a -> IO ()
+control n = runNode "rosy-simulator" (controller n)
+
 startNode :: Node () -> WorldState -> IO ()
 startNode n w = runNode "rosy-simulator" $ do
     n

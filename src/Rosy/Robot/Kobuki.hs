@@ -5,6 +5,7 @@ module Rosy.Robot.Kobuki where
 import Rosy.Robot.State
 import Rosy.Viewer.State
 import qualified Rosy.Controller.Kobuki as Controller
+import Rosy.Controller.Core
 import Rosy.Util
 
 import Ros.Node
@@ -75,23 +76,23 @@ soundCodeToFile 6 = "cleanindend.wav"
 -- the sound may play before we load the viewer, issuing a js error
 readRobotSound :: RobotState -> Node ThreadId
 readRobotSound st = do
-    sound <- subscribe "/mobile-base/commands/sound"
+    sound <- subscribe (roshome </> "commands/sound")
     flip runHandler sound $ \soundcode -> orNothing $ playSound (soundcode)
 
 readRobotLed1 :: RobotState -> Node ThreadId
 readRobotLed1 st = do
-    led <- subscribe "/mobile-base/commands/led1"
+    led <- subscribe (roshome </> "commands/led1")
     flip runHandler led $ \ledcolor -> do
         atomically $ writeTVar (_robotLed1 st) ledcolor
 
 readRobotLed2 :: RobotState -> Node ThreadId
 readRobotLed2 st = do
-    led <- subscribe "/mobile-base/commands/led2"
+    led <- subscribe (roshome </> "commands/led2")
     flip runHandler led $ \ledcolor -> atomically $ writeTVar (_robotLed2 st) ledcolor
 
 readRobotVelocity :: RobotState -> Node ThreadId
 readRobotVelocity st = do
-    v <- subscribe "/mobile-base/commands/velocity"
+    v <- subscribe (roshome </> "commands/velocity")
     flip runHandler v $ \twist -> atomically $ do
         now <- unsafeIOToSTM $ getCurrentTime
         writeTVar (_robotVel st) (twist,now)
@@ -340,7 +341,7 @@ writeRobotButtons st = do
     let robotButtonTrigger2 = repeatM $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotButton2 st)
             return $ ButtonEvent button_Button2 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
-    advertise "/mobile-base/events/button" $ Topic.mergeList
+    advertise (roshome </> "events/button") $ Topic.mergeList
         [robotButtonTrigger0,robotButtonTrigger1,robotButtonTrigger2]
 
 writeRobotBumpers :: RobotState -> Node ()
@@ -354,7 +355,7 @@ writeRobotBumpers st = do
     let robotBumperTriggerR = repeatM $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotBumperR st)
             return $ BumperEvent bumper_RIGHT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
-    advertise "/mobile-base/events/bumper" $ Topic.mergeList
+    advertise (roshome </> "events/bumper") $ Topic.mergeList
         [robotBumperTriggerL,robotBumperTriggerC,robotBumperTriggerR]
 
 writeRobotCliffs :: RobotState -> Node ()
@@ -368,7 +369,7 @@ writeRobotCliffs st = do
     let robotCliffTriggerR = repeatM $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotCliffR st)
             return $ CliffEvent CliffEvent.sensor_RIGHT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
-    advertise "/mobile-base/events/cliff" $ Topic.mergeList
+    advertise (roshome </> "events/cliff") $ Topic.mergeList
         [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
 
 writeRobotWheels :: RobotState -> Node ()
@@ -379,7 +380,7 @@ writeRobotWheels st = do
     let robotWheelTriggerR = repeatM $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotWheelR st)
             return $ WheelDropEvent WheelDropEvent.wheel_RIGHT (if b then WheelDropEvent.state_DROPPED else WheelDropEvent.state_RAISED)
-    advertise "/mobile-base/events/wheel_drop" $ Topic.mergeList
+    advertise (roshome </> "events/wheel_drop") $ Topic.mergeList
         [robotWheelTriggerL,robotWheelTriggerR]
 
 runRobotNodes :: WorldState -> Node [ThreadId]

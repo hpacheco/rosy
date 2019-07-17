@@ -6,6 +6,7 @@ import Rosy.Robot.State
 import Rosy.Robot.Kobuki
 import Rosy.Viewer.State
 import qualified Rosy.Controller.Kobuki as Controller
+import Rosy.Controller.Core
 import Rosy.Util
 
 import Ros.Geometry_msgs.Vector3 as Vector3
@@ -36,6 +37,8 @@ import GHC.Conc
 import Text.Printf
 
 import Lens.Family (over,set)
+
+import System.FilePath
 
 runViewer :: WorldState -> IO ()
 runViewer w = do
@@ -224,7 +227,7 @@ writeViewerVelocity w = do
             then return Nothing
             else return $ Just $ Controller.velocityToROS v
     let viewerVelocityTrigger = fmap fromJust $ Topic.filter isJust $ Topic.repeatM go
-    advertise "/mobile-base/commands/velocity" $ viewerVelocityTrigger
+    advertise (roshome </> "commands/velocity") $ viewerVelocityTrigger
     
 runViewerNodes :: WorldState -> Node ()
 runViewerNodes w = do

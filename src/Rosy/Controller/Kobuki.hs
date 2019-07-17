@@ -31,6 +31,8 @@ import Ros.Kobuki_msgs.WheelDropEvent as WheelDropEvent
 import qualified Ros.Kobuki_msgs.Sound as Sound
 import qualified Ros.Kobuki_msgs.Led as Led
 
+import System.FilePath
+
 -- * Kobuki Subscriptions (give orders to the robot)
 
 -- ** Sounds
@@ -50,8 +52,8 @@ soundToROS :: Sound -> Sound.Sound
 soundToROS = Sound.Sound . toEnum . fromEnum
 
 instance Published Sound where
-    --published t = advertise "/mobile-base/commands/sound" (fmap soundToROS t)
-    published = publishedROS $ advertise "/mobile-base/commands/sound" . fmap soundToROS
+    --published t = advertise (roshome </> "commands/sound") (fmap soundToROS t)
+    published = publishedROS $ advertise (roshome </> "commands/sound") . fmap soundToROS
 
 -- ** Leds
 
@@ -77,7 +79,7 @@ led1ToROS = Led.Led . ledColorToROS . ledColor1
 instance D.Default Led1
 
 instance Published Led1 where
-    published = publishedROS $ advertise "/mobile-base/commands/led1" . fmap led1ToROS
+    published = publishedROS $ advertise (roshome </> "commands/led1") . fmap led1ToROS
 
 -- | The robot's second led light.
 data Led2 = Led2
@@ -92,7 +94,7 @@ led2ToROS = Led.Led . ledColorToROS . ledColor2
 instance D.Default Led2
 
 instance Published Led2 where
-    published = publishedROS $ advertise "/mobile-base/commands/led2" . fmap led2ToROS
+    published = publishedROS $ advertise (roshome </> "commands/led2") . fmap led2ToROS
 
 -- ** Velocity
 
@@ -118,7 +120,7 @@ velocityToROS :: Velocity -> Twist
 velocityToROS (Velocity vx az) = Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
 
 instance Published Velocity where
-    published = publishedROS $ advertise "/mobile-base/commands/velocity" . fmap velocityToROS
+    published = publishedROS $ advertise (roshome </> "commands/velocity") . fmap velocityToROS
 
 -- * Kobuki publications (see the robot's state)
 
@@ -202,7 +204,7 @@ instance D.Default Button0
 
 instance Subscribed Button0 where
     subscribed = subscribedROS $ do
-        buttons <- subscribe "/mobile-base/events/button"
+        buttons <- subscribe (roshome </> "events/button")
         let button0 = Topic.filter ((== 0) . ButtonEvent._button) buttons
         return $ fmap (Button0 . toEnum . fromEnum . ButtonEvent._state) button0
 
@@ -217,7 +219,7 @@ instance D.Default Button1
 
 instance Subscribed Button1 where
     subscribed = subscribedROS $ do
-        buttons <- subscribe "/mobile-base/events/button"
+        buttons <- subscribe (roshome </> "events/button")
         let button1 = Topic.filter ((== 1) . ButtonEvent._button) buttons
         return $ fmap (Button1 . toEnum . fromEnum . ButtonEvent._state) button1
 
@@ -232,7 +234,7 @@ instance D.Default Button2
 
 instance Subscribed Button2 where
     subscribed = subscribedROS $ do
-        buttons <- subscribe "/mobile-base/events/button"
+        buttons <- subscribe (roshome </> "events/button")
         let button2 = Topic.filter ((== 2) . ButtonEvent._button) buttons
         return $ fmap (Button2 . toEnum . fromEnum . ButtonEvent._state) button2
 
@@ -248,7 +250,7 @@ fromROSButton (ButtonEvent b s) = Button (fromEnum b) (toEnum $ fromEnum s)
 
 instance Subscribed Button where
     subscribed = subscribedROS $ do
-        buttons <- subscribe "/mobile-base/events/button"
+        buttons <- subscribe (roshome </> "events/button")
         return $ fmap fromROSButton buttons       
 
 -- ** Bumpers
@@ -267,7 +269,7 @@ instance D.Default BumperLeft
 
 instance Subscribed BumperLeft where
     subscribed = subscribedROS $ do
-        bumpers <- subscribe "/mobile-base/events/bumper"
+        bumpers <- subscribe (roshome </> "events/bumper")
         let bumper = Topic.filter ((== bumper_LEFT) . BumperEvent._bumper) bumpers
         return $ fmap (BumperLeft . toEnum . fromEnum . BumperEvent._state) bumper
 
@@ -282,7 +284,7 @@ instance D.Default BumperCenter
 
 instance Subscribed BumperCenter where
     subscribed = subscribedROS $ do
-        bumpers <- subscribe "/mobile-base/events/bumper"
+        bumpers <- subscribe (roshome </> "events/bumper")
         let bumper = Topic.filter ((== bumper_CENTER) . BumperEvent._bumper) bumpers
         return $ fmap (BumperCenter . toEnum . fromEnum . BumperEvent._state) bumper
 
@@ -297,7 +299,7 @@ instance D.Default BumperRight
 
 instance Subscribed BumperRight where
     subscribed = subscribedROS $ do
-        bumpers <- subscribe "/mobile-base/events/bumper"
+        bumpers <- subscribe (roshome </> "events/bumper")
         let bumper = Topic.filter ((== bumper_RIGHT) . BumperEvent._bumper) bumpers
         return $ fmap (BumperRight . toEnum . fromEnum . BumperEvent._state) bumper
 
@@ -316,7 +318,7 @@ fromROSBumper (BumperEvent b s) = Bumper (toEnum $ fromEnum b) (toEnum $ fromEnu
 
 instance Subscribed Bumper where
     subscribed = subscribedROS $ do
-        bumpers <- subscribe "/mobile-base/events/bumper"
+        bumpers <- subscribe (roshome </> "events/bumper")
         return $ fmap fromROSBumper bumpers       
 
 -- ** Cliffs
@@ -338,7 +340,7 @@ instance D.Default CliffLeft
 
 instance Subscribed CliffLeft where
     subscribed = subscribedROS $ do
-        cliffs <- subscribe "/mobile-base/events/cliff"
+        cliffs <- subscribe (roshome </> "events/cliff")
         let cliff = Topic.filter ((== 0) . CliffEvent._sensor) cliffs
         return $ fmap (CliffLeft . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -353,7 +355,7 @@ instance D.Default CliffCenter
 
 instance Subscribed CliffCenter where
     subscribed = subscribedROS $ do
-        cliffs <- subscribe "/mobile-base/events/cliff"
+        cliffs <- subscribe (roshome </> "events/cliff")
         let cliff = Topic.filter ((== 1) . CliffEvent._sensor) cliffs
         return $ fmap (CliffCenter . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -368,7 +370,7 @@ instance D.Default CliffRight
 
 instance Subscribed CliffRight where
     subscribed = subscribedROS $ do
-        cliffs <- subscribe "/mobile-base/events/cliff"
+        cliffs <- subscribe (roshome </> "events/cliff")
         let cliff = Topic.filter ((== 2) . CliffEvent._sensor) cliffs
         return $ fmap (CliffRight . toEnum . fromEnum . CliffEvent._state) cliff
 
@@ -387,7 +389,7 @@ fromROSCliff (CliffEvent b s _) = Cliff (toEnum $ fromEnum b) (toEnum $ fromEnum
 
 instance Subscribed Cliff where
     subscribed = subscribedROS $ do
-        cliffs <- subscribe "/mobile-base/events/cliff"
+        cliffs <- subscribe (roshome </> "events/cliff")
         return $ fmap fromROSCliff cliffs       
 
 -- ** Wheels
@@ -409,7 +411,7 @@ instance D.Default WheelLeft
 
 instance Subscribed WheelLeft where
     subscribed = subscribedROS $ do
-        wheels <- subscribe "/mobile-base/events/wheel_drop"
+        wheels <- subscribe (roshome </> "events/wheel_drop")
         let wheel = Topic.filter ((== wheel_LEFT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelLeft . toEnum . fromEnum . WheelDropEvent._state) wheel
 
@@ -424,7 +426,7 @@ instance D.Default WheelRight
 
 instance Subscribed WheelRight where
     subscribed = subscribedROS $ do
-        wheels <- subscribe "/mobile-base/events/wheel_drop"
+        wheels <- subscribe (roshome </> "events/wheel_drop")
         let wheel = Topic.filter ((== wheel_RIGHT) . WheelDropEvent._wheel) wheels
         return $ fmap (WheelRight . toEnum . fromEnum . WheelDropEvent._state) wheel
 
@@ -443,6 +445,6 @@ fromROSWheel (WheelDropEvent b s) = Wheel (toEnum $ fromEnum b) (toEnum $ fromEn
 
 instance Subscribed Wheel where
     subscribed = subscribedROS $ do
-        wheels <- subscribe "/mobile-base/events/wheel_drop"
+        wheels <- subscribe (roshome </> "events/wheel_drop")
         return $ fmap fromROSWheel wheels       
 
