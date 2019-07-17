@@ -137,7 +137,12 @@ module Rosy
     --
     , Say(..)
     --
-    -- ** Memory
+    -- ** User-defined events
+    --
+    {-| You can define new events input or output events seamlessly by declaring new data types.
+    -}
+    --
+    -- ** User-defined memory
     -- 
     {-| You can give your controller memory (i.e. global state) by declaring inputs and outputs with the additional 'Memory' type tag.
     -}
