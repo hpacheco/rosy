@@ -140,6 +140,12 @@ subscribedMemory = do
     tv <- liftIO $ getUserMemory D.def
     return $ Topic.topicRate defaultRate $ Topic.repeat $ readTVar tv
 
+data Memory a = Memory a
+  deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+instance D.Default a => D.Default (Memory a) where
+    def = Memory D.def
+
 -- * Controllers
 
 -- | Command the robot to speak some sentence.
@@ -148,6 +154,9 @@ data Say = Say String
 
 class Subscribed a where
     subscribed :: Node (Topic IO (STM a))
+
+instance (D.Default a,Typeable a) => Subscribed (Memory a) where
+    subscribed = subscribedMemory
 
 subscribedROS :: Node (Topic IO a) -> Node (Topic IO (STM a))
 subscribedROS n = do
@@ -220,6 +229,9 @@ instance Subscribed Clock where
 class Published a where
     -- the output topic preserves the periodicity of the input topic
     published :: Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+    
+instance (D.Default a,Typeable a) => Published (Memory a) where
+    published = publishedMemory
     
 -- writes to a transactional buffer, and buffer gets advertised to ROS
 publishedROS :: (Topic IO a -> Node ()) -> Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))

@@ -115,9 +115,9 @@ generateDataInstances defs name
     $+$ text "deriving instance Generic" <+> name
     $+$ (if List.elem name defs then text "" else text "instance {-# OVERLAPPABLE #-} Default" <+> name)
     $+$ (text "instance Subscribed" <+> name <+> text "where"
-        $+$ nest 5 (text "subscribed = subscribedMemory"))
+        $+$ nest 5 (text "subscribed = subscribedEvent"))
     $+$ (text "instance Published" <+> name <+> text "where"
-        $+$ nest 5 (text "published = publishedMemory"))
+        $+$ nest 5 (text "published = publishedEvent"))
     
     
 

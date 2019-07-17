@@ -137,6 +137,14 @@ module Rosy
     --
     , Say(..)
     --
+    -- ** Memory
+    -- 
+    {-| You can give your controller memory (i.e. global state) by declaring inputs and outputs with the additional 'Memory' type tag.
+    -}
+    --
+    -- | A type declarating for processing global memory.
+    ,Memory(..)
+    --
     -- * Utilities
     -- ** Geometry functions.
     , radiansToDegrees
@@ -183,7 +191,7 @@ import Prelude
 --
 -- If you try this out, the robot will indeed acelerate forward.
 --
--- Thinking further, what if our robot hits a wall? It would be nice if our controller at least played a sound to signal that it has crashed. But how does the controller know when to react? Luckily, our robot comes equipped with a front bumper that will be pressed on contact. We can simply write a @warningWall@ controller that will wait for the bumper to be pressed, and when it happens tell the robot to produce an error sound. To ignore when the bumper is released, we can use a |Maybe|:
+-- Thinking further, what if our robot hits a wall? It would be nice if our controller at least played a sound to signal that it has crashed. But how does the controller know when to react? Luckily, our robot comes equipped with a front bumper that will be pressed on contact. We can simply write a @warningWall@ controller that will wait for the bumper to be pressed, and when it happens tell the robot to produce an error sound. To ignore when the bumper is released, we can use a 'Maybe':
 --
 -- > warningWall :: BumperCenter -> Maybe Sound
 -- > warningWall (BumperCenter Pressed)  = Just ErrorSound
@@ -197,13 +205,13 @@ import Prelude
 -- Running this example, the robot will play a sound exactly once when it hits a wall. But what if we wanted to play an error sound forever? To perform something like that, we need to give our controller memory: it normally processes each eevnt independently, but will now need to remember that it has hit a wall before. In Rosy, you can give your controller memory by defining a new data type:
 --
 -- > data Hit = NoHit | NoHit
--- > warningWall :: BumperCenter -> Maybe Hit
--- > warningWall (BumperCenter Pressed)  = Just Hit
+-- > warningWall :: BumperCenter -> Maybe (Memory Hit)
+-- > warningWall (BumperCenter Pressed)  = Just (Memory Hit)
 -- > warningWall (BumperCenter Released) = Nothing
 -- >
--- > playError :: Hit -> Maybe Sound
--- > playError Hit = Just ErrorSound
--- > playError NoHit = Nothing
+-- > playError :: Memory Hit -> Maybe Sound
+-- > playError (Memory Hit) = Just ErrorSound
+-- > playError (Memory NoHit) = Nothing
 -- > 
 -- > main = simulate (accelerate,warningWall,playError)
 --
