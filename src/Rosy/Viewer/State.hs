@@ -75,9 +75,9 @@ world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
          ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
          ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
--- | Size of each map cell in cm.
+-- | Size of each map cell in m.
 mapCellSize :: Double
-mapCellSize = 30
+mapCellSize = 0.3
 
 mapSize :: World -> Dimension
 mapSize [] = (0,0)

@@ -101,7 +101,7 @@ instance Published Led2 where
 
 -- | The velocity of the robot is defined using two parameters.
 data Velocity = Velocity
-    { -- | Linear velocity in the same direction as the robot (cm/s)
+    { -- | Linear velocity in the same direction as the robot (m/s)
       velocityLinear  :: Double
       -- | Angular velocity in the counter-clockwise direction (radians/s)
     , velocityAngular :: Double

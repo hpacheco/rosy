@@ -406,25 +406,25 @@ runRobotNodes w = do
     writeRobotState
     return [t0,t1,t2,t3,t4]
     
--- cm/s2
+-- m/s2
 robotMaxLinearAccel :: Double
-robotMaxLinearAccel = 20
+robotMaxLinearAccel = 0.2
 
 -- radians/s2
 robotMaxRotationalAccel :: Double
 robotMaxRotationalAccel = 1.35
     
--- | Robot maximum translational velocity cm/s
+-- | Robot maximum translational velocity m/s
 robotMaxLinearSpeed :: Double
-robotMaxLinearSpeed = 70
+robotMaxLinearSpeed = 0.7
 
 -- | Robot maximum rotational velocity radians/s
 robotMaxRotationalSpeed :: Double
 robotMaxRotationalSpeed = pi
     
--- | Robot size in cm.
+-- | Robot size in m.
 robotSize :: Double
-robotSize = 35.15
+robotSize = 0.3515
 robotRadius :: Double
 robotRadius = robotSize / 2
     
@@ -441,6 +441,6 @@ robotMass :: Double
 robotMass = 2.35
     
 -- friction factor [0..1] of the wheels
--- negative velocity perpendicular to the wheels (cm/s)
+-- negative velocity perpendicular to the wheels (m/s)
 robotWheelDragFriction :: Double
-robotWheelDragFriction = 1
+robotWheelDragFriction = 0.1

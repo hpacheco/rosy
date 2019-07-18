@@ -67,13 +67,13 @@ drawCell Grnd = Color groundColor . W.rectangleWire
 drawCell Wall = Color wallColor . W.rectangleSolid
 drawCell Hole = Color holeColor . W.rectangleSolid
 
--- | Converts a coordinate from cm to pixels
+-- | Converts a coordinate from m to pixels
 scalePx :: WorldState -> Float -> Dimension -> Float
-scalePx w cm (dx,dy) = px
+scalePx w m (dx,dy) = px
     where
     (mx,my) = mapSize $ _worldMap w
     cellPx = min (realToFrac dx / realToFrac mx) (realToFrac dy / realToFrac my)
-    px = (cellPx * cm) / realToFrac mapCellSize
+    px = (cellPx * m) / realToFrac mapCellSize
 
 scalePointPx :: WorldState -> (Float,Float) -> Dimension -> (Float,Float)
 scalePointPx w (cmx,cmy) d = (scalePx w cmx d,scalePx w cmy d)
@@ -91,10 +91,10 @@ drawMenuIO w o = do
     
     -- draw menus
     let back = Color menuColor . W.rectangleSolid
-    let positionx   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("PositionX: " ++ printf "%.2f" px ++ " cm")
-    let positiony   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("PositionY: " ++ printf "%.2f" py ++ " cm")
+    let positionx   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("PositionX: " ++ printf "%.2f" px ++ " m")
+    let positiony   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("PositionY: " ++ printf "%.2f" py ++ " m")
     let orientation = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("Orientation: " ++ printf "%.2f" rads ++ " rads")
-    let lvelocity   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" cm/s")
+    let lvelocity   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("Linear Velocity: " ++ printf "%.2f" vlin ++" m/s")
     let avelocity   = Translate (-70) 0 . Scale 0.13 0.13 . W.text ("Angular Velocity: " ++ printf "%.2f" vrot ++" rads/s")
     let info1 = W.hs [positionx,positiony,orientation]
     let info2 = W.hs [lvelocity,avelocity]
