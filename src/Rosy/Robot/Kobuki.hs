@@ -386,7 +386,9 @@ writeRobotWheels st = do
 
 writeRobotState :: Node ()
 writeRobotState = do
-    advertise (roshome </> "events/robot_state") $ Topic $ return (RobotStateEvent RobotStateEvent.state_ONLINE,haltTopic)
+    advertise (roshome </> "events/robot_state") $ Topic $ do
+        threadDelay $ 10^6
+        return (RobotStateEvent RobotStateEvent.state_ONLINE,haltTopic)
 
 runRobotNodes :: WorldState -> Node [ThreadId]
 runRobotNodes w = do

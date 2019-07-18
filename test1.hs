@@ -68,9 +68,17 @@ import GHC.Generics (Generic(..))
 --
 --main = simulate (step,act)
 
-data Mode = On | Off
+data Blink = Off | On
 
-test :: Memory Mode -> Mode
-test = undefined
+start1 :: RobotStatus -> Say
+start1 s = Say (show s)
 
-main = simulate test
+start :: RobotStatus -> Blink
+start Online = On
+start Offline = Off
+
+blink :: Blink -> (Led1,Blink)
+blink Off = (Led1 Black,On)
+blink On = (Led1 Red,Off)
+
+main = simulate (start,blink)
