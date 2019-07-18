@@ -44,7 +44,12 @@ module Rosy
     -- ** Robot events (inputs)
     --
     {-| You can react to when the robot reports any of the following events.
-    -}
+    -}--
+    -- *** Status
+    --
+    -- | When the robot is turned on or off.
+    -- 
+    , RobotStatus(..)
     --
     -- *** Buttons
     --

@@ -5,7 +5,7 @@
 module Main where
 
 import Rosy
-import Rosy.Controller.Core (Published(..),Subscribed(..),publishedMemory,subscribedMemory)
+import Rosy.Controller.Core (Published(..),Subscribed(..),publishedEvent,subscribedEvent,publishedMemory,subscribedMemory)
 import Data.Default.Generics (Default(..))
 import Data.Typeable (Typeable(..))
 import GHC.Generics (Generic(..))
@@ -68,4 +68,9 @@ import GHC.Generics (Generic(..))
 --
 --main = simulate (step,act)
 
-main = simulate (Velocity 1 0)
+data Mode = On | Off
+
+test :: Memory Mode -> Mode
+test = undefined
+
+main = simulate test

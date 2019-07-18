@@ -27,6 +27,7 @@ import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.BumperEvent as BumperEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
+import Ros.Kobuki_msgs.RobotStateEvent as RobotStateEvent
 import Ros.Kobuki_msgs.WheelDropEvent as WheelDropEvent
 import qualified Ros.Kobuki_msgs.Sound as Sound
 import qualified Ros.Kobuki_msgs.Led as Led
@@ -184,6 +185,19 @@ instance Subscribed Velocity where
     subscribed = subscribedROS $ do
         odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (velocityFromROS . TwistWithCovariance._twist . Odometry._twist) odom
+        
+-- ** Status
+
+-- | When the robot goes 'Online' or 'Offline'.
+data RobotStatus = Offline | Online
+    deriving (Show, Eq, Ord, Typeable, G.Generic,Enum)
+
+instance D.Default RobotStatus
+        
+instance Subscribed RobotStatus where
+    subscribed = subscribedROS $ do
+        states <- subscribe (roshome </> "events/robot_state")
+        return $ fmap (toEnum . fromEnum . RobotStateEvent._state) states
         
 -- ** Buttons
 

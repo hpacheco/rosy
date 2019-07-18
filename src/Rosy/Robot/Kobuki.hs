@@ -18,6 +18,7 @@ import Ros.Kobuki_msgs.BumperEvent as BumperEvent
 import Ros.Kobuki_msgs.ButtonEvent as ButtonEvent
 import Ros.Kobuki_msgs.CliffEvent as CliffEvent
 import Ros.Kobuki_msgs.WheelDropEvent as WheelDropEvent
+import Ros.Kobuki_msgs.RobotStateEvent as RobotStateEvent
 import Ros.Nav_msgs.Odometry as Odometry
 import Ros.Geometry_msgs.Twist as Twist
 import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
@@ -383,6 +384,10 @@ writeRobotWheels st = do
     advertise (roshome </> "events/wheel_drop") $ Topic.mergeList
         [robotWheelTriggerL,robotWheelTriggerR]
 
+writeRobotState :: Node ()
+writeRobotState = do
+    advertise (roshome </> "events/robot_state") $ Topic $ return (RobotStateEvent RobotStateEvent.state_ONLINE,haltTopic)
+
 runRobotNodes :: WorldState -> Node [ThreadId]
 runRobotNodes w = do
     let st = _worldRobot w
@@ -396,6 +401,7 @@ runRobotNodes w = do
     writeRobotBumpers st
     writeRobotCliffs st
     writeRobotWheels st
+    writeRobotState
     return [t0,t1,t2,t3,t4]
     
 -- cm/s2

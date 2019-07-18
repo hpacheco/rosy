@@ -49,9 +49,14 @@ reportMessage :: String -> IO ()
 reportMessage msg = putStrLn msg
 #endif
 
+haltTopic :: Topic IO a
+haltTopic = Topic $ do
+    mv <- newEmptyMVar
+    a <- readMVar mv
+    return (a,haltTopic)
 
-accelerate :: Double -> Topic IO a -> Node (Topic IO a)
-accelerate hz t = do
+accelerateTopic :: Double -> Topic IO a -> Node (Topic IO a)
+accelerateTopic hz t = do
     mvar <- liftIO $ newEmptyMVar 
     _ <- flip runHandler t $ \a -> tryTakeMVar mvar >> putMVar mvar a
     return $ Topic.topicRate hz $ Topic.repeatM $ readMVar mvar
