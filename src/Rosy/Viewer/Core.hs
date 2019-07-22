@@ -42,7 +42,7 @@ import System.FilePath
 
 runViewer :: WorldState -> IO ()
 runViewer w = do
-    playIO (_worldDisplay w) (greyN 0.5) 60 w drawIO eventIO timeIO
+    playIO (_worldDisplay w) (greyN 0.5) 30 w drawIO eventIO timeIO
 
 drawIO :: WorldState -> IO Picture
 drawIO w = do

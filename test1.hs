@@ -83,7 +83,28 @@ import GHC.Generics (Generic(..))
 --
 --main = simulate (start,blink)
 
-avanca :: Velocity
-avanca = Velocity 1 0
+--avanca :: Velocity
+--avanca = Velocity 1 0
+--
+--main = simulate avanca
 
-main = simulate avanca
+data Modo = Frente | Tras
+data Inverte = Inverte
+
+avanca :: Memory Modo -> Velocity
+avanca (Memory Frente) = Velocity 0.2 0
+avanca (Memory Tras) = Velocity (-0.2) 0
+
+aviso :: Memory Modo -> Inverte -> (Sound,Memory Modo)
+aviso (Memory modo) Inverte = (ErrorSound,Memory $ inverte modo)
+
+parede :: Velocity -> Maybe Inverte
+parede (Velocity lin rot) = if abs lin < 0.2 then Just Inverte else Nothing
+
+others :: Either BumperLeft BumperRight -> Led1
+others _ = Led1 Red
+
+inverte Frente = Tras
+inverte Tras = Frente
+
+main = simulate (avanca,aviso,parede,others)

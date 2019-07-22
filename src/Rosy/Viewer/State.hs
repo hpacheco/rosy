@@ -75,6 +75,20 @@ world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
          ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
          ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
+world2 :: World
+world2 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
+         ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
+
 -- | Size of each map cell in m.
 mapCellSize :: Double
 mapCellSize = 0.3

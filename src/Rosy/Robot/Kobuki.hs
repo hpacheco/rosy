@@ -430,7 +430,7 @@ robotRadius = robotSize / 2
     
 -- frequency of the physics engine (Hz)
 robotFrequency :: Double
-robotFrequency = 10
+robotFrequency = 15
 
 -- moment of inertia of robot
 robotInertia :: Double
@@ -443,4 +443,4 @@ robotMass = 2.35
 -- friction factor [0..1] of the wheels
 -- negative velocity perpendicular to the wheels (m/s)
 robotWheelDragFriction :: Double
-robotWheelDragFriction = 0.1
+robotWheelDragFriction = 0.01
