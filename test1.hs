@@ -68,17 +68,22 @@ import GHC.Generics (Generic(..))
 --
 --main = simulate (step,act)
 
-data Blink = Off | On
+--data Blink = Off | On
+--
+--start1 :: RobotStatus -> Say
+--start1 s = Say (show s)
+--
+--start :: RobotStatus -> Blink
+--start Online = On
+--start Offline = Off
+--
+--blink :: Blink -> (Led1,Blink)
+--blink Off = (Led1 Black,On)
+--blink On = (Led1 Red,Off)
+--
+--main = simulate (start,blink)
 
-start1 :: RobotStatus -> Say
-start1 s = Say (show s)
+avanca :: Velocity
+avanca = Velocity 1 0
 
-start :: RobotStatus -> Blink
-start Online = On
-start Offline = Off
-
-blink :: Blink -> (Led1,Blink)
-blink Off = (Led1 Black,On)
-blink On = (Led1 Red,Off)
-
-main = simulate (start,blink)
+main = simulate avanca

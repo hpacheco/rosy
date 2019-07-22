@@ -144,7 +144,7 @@ module Rosy
     --
     -- ** User-defined events
     --
-    {-| You can define new events input or output events seamlessly by declaring new data types.
+    {-| You can define new input or output events seamlessly by declaring new data types.
     -}
     --
     -- ** User-defined memory
