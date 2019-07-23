@@ -329,7 +329,7 @@ robotCells w p = Maybe.catMaybes $ map (posCell w) ps
     
 writeRobotOdometry :: RobotState -> Node ()
 writeRobotOdometry st = do
-    advertise "odom" $ topicRate 1 $ repeatM $ atomically $ readTVar (_robotOdom st)
+    advertise "odom" $ topicRate defaultRate $ repeatM $ atomically $ readTVar (_robotOdom st)
 
 writeRobotButtons :: RobotState -> Node ()
 writeRobotButtons st = do
