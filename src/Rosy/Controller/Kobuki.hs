@@ -127,6 +127,9 @@ instance Published Velocity where
 
 -- ** Odometry
 
+instance Subscribed Odometry where
+    subscribed = subscribedROS $ subscribe "odom"
+
 -- | The current position of the robot.
 data Position = Position
     { -- | Coordinate in the horizontal X axis.
