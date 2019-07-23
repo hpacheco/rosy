@@ -88,6 +88,27 @@ import GHC.Generics (Generic(..))
 --
 --main = simulate avanca
 
+--data Modo = Frente | Tras
+--data Inverte = Inverte
+--
+--avanca :: Memory Modo -> Velocity
+--avanca (Memory Frente) = Velocity 0.2 0
+--avanca (Memory Tras) = Velocity (-0.2) 0
+--
+--aviso :: Memory Modo -> Inverte -> (Sound,Memory Modo)
+--aviso (Memory modo) Inverte = (ErrorSound,Memory $ inverte modo)
+--
+--parede :: Velocity -> Maybe Inverte
+--parede (Velocity lin rot) = if abs lin < 0.2 then Just Inverte else Nothing
+--
+--others :: Either BumperLeft BumperRight -> Led1
+--others _ = Led1 Red
+--
+--inverte Frente = Tras
+--inverte Tras = Frente
+--
+--main = simulate (avanca,aviso,parede,others)
+
 data Modo = Frente | Tras
 data Inverte = Inverte
 
@@ -96,15 +117,19 @@ avanca (Memory Frente) = Velocity 0.2 0
 avanca (Memory Tras) = Velocity (-0.2) 0
 
 aviso :: Memory Modo -> Inverte -> (Sound,Memory Modo)
-aviso (Memory modo) Inverte = (ErrorSound,Memory $ inverte modo)
+aviso modo Inverte = (ErrorSound,inverte modo)
+
+bumper :: BumperCenter -> Maybe Inverte
+bumper (BumperCenter Pressed) = Just Inverte
+bumper (BumperCenter Released) = Nothing 
 
 parede :: Velocity -> Maybe Inverte
 parede (Velocity lin rot) = if abs lin < 0.2 then Just Inverte else Nothing
 
-others :: Either BumperLeft BumperRight -> Led1
-others _ = Led1 Red
+inverte (Memory Frente) = Memory Tras
+inverte (Memory Tras) = Memory Frente
 
-inverte Frente = Tras
-inverte Tras = Frente
+sayInv :: Inverte -> Say
+sayInv _ = Say "inv"
 
-main = simulate (avanca,aviso,parede,others)
+main = simulate (avanca,sayInv)--aviso,bumper,parede)
