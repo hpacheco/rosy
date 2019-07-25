@@ -6,6 +6,7 @@ module Main where
 
 import Rosy
 import Rosy.Controller.Core (Published(..),Subscribed(..),publishedEvent,subscribedEvent,publishedMemory,subscribedMemory)
+import Rosy.Interface
 import Data.Default.Generics (Default(..))
 import Data.Typeable (Typeable(..))
 import GHC.Generics (Generic(..))
@@ -112,24 +113,68 @@ import GHC.Generics (Generic(..))
 data Modo = Frente | Tras
 data Inverte = Inverte
 
-avanca :: Memory Modo -> Velocity
-avanca (Memory Frente) = Velocity 0.2 0
-avanca (Memory Tras) = Velocity (-0.2) 0
+--avanca :: Memory Modo -> Velocity
+--avanca (Memory Frente) = Velocity 0.2 0
+--avanca (Memory Tras) = Velocity (-0.2) 0
+--
+--aviso :: Memory Modo -> Inverte -> (Sound,Memory Modo)
+--aviso modo Inverte = (ErrorSound,inverte modo)
+--
+--bumper :: BumperCenter -> Maybe Inverte
+--bumper (BumperCenter Pressed) = Just Inverte
+--bumper (BumperCenter Released) = Nothing 
+--
+--parede :: Velocity -> Maybe Inverte
+--parede (Velocity lin rot) = if abs lin < 0.2 then Just Inverte else Nothing
+--
+--inverte (Memory Frente) = Memory Tras
+--inverte (Memory Tras) = Memory Frente
+--
+--sayInv :: Inverte -> Say
+--sayInv _ = Say "inv"
 
-aviso :: Memory Modo -> Inverte -> (Sound,Memory Modo)
-aviso modo Inverte = (ErrorSound,inverte modo)
+--sayA :: Say
+--sayA = Say "A"
+--
+--main = control (sayA)--aviso,bumper,parede)
 
-bumper :: BumperCenter -> Maybe Inverte
-bumper (BumperCenter Pressed) = Just Inverte
-bumper (BumperCenter Released) = Nothing 
+--data Modo = Frente | Tras
 
-parede :: Velocity -> Maybe Inverte
-parede (Velocity lin rot) = if abs lin < 0.2 then Just Inverte else Nothing
+--avanca :: Memory Modo -> Velocity
+--avanca (Memory Frente) = Velocity 0.2 0
+--avanca (Memory Tras) = Velocity (-0.2) 0
+--
+--aviso :: BumperCenter -> Maybe (Sound,Memory Modo)
+--aviso (BumperCenter Pressed) = Just (ErrorSound,Memory Tras)
+--aviso (BumperCenter Released) = Nothing
 
-inverte (Memory Frente) = Memory Tras
-inverte (Memory Tras) = Memory Frente
+frente :: Velocity
+frente = Velocity 0.2 0
 
-sayInv :: Inverte -> Say
-sayInv _ = Say "inv"
+data Bateu = Bateu
+bateu :: BumperCenter -> Maybe Bateu
+bateu (BumperCenter Pressed) = Just Bateu
+bateu _ = Nothing
 
+tras :: Velocity
+tras = Velocity (-0.2) 0
+
+say :: Position -> Say
+say p = Say $ show p
+
+--main = simulate frente
+
+<<<<<<< Updated upstream
 main = simulate (Velocity 0.2 0)--,sayInv)--aviso,bumper,parede)
+=======
+main = simulateTask $ do
+    Rosy.Interface.forever frente
+--    Bateu <- Rosy.Interface.until (frente,bateu)
+    return ()
+--    forever tras
+    
+    
+    
+    
+    
+>>>>>>> Stashed changes

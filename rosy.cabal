@@ -27,7 +27,7 @@ Library
 
   Build-depends:       base >= 4.5 && < 6,
                        uuid, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, process, safe,
-                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, roshask
+                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, roshask, thread-hierarchy
   if impl(ghcjs)
     Build-depends:
                        codeworld-api-gloss

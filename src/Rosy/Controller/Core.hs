@@ -15,7 +15,7 @@ import Lens.Family.TH (makeLensesBy)
 import Lens.Family (view, set)
 
 import Ros.Node
-import Ros.Topic.Util ((<+>))
+import Ros.Topic.Util (TIO,(<+>))
 import qualified Ros.Topic as Topic
 import qualified Ros.Topic.Util as Topic
 import Data.Time.Clock
@@ -26,8 +26,10 @@ import Rosy.Util
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.IO.Class
-import Control.Monad.State (StateT(..))
+import Control.Monad.State (StateT(..),gets)
 import qualified Control.Monad.State as State
+import Control.Monad.Reader (ReaderT(..),asks)
+import qualified Control.Monad.Reader as Reader
 import GHC.Conc.Sync
 import Control.Concurrent.STM
 import Control.Concurrent
@@ -49,17 +51,21 @@ reportMessage :: String -> IO ()
 reportMessage msg = putStrLn msg
 #endif
 
-haltTopic :: Topic IO a
+halt :: IO a
+halt = do
+    forever (threadDelay maxBound)
+    return (error "halt")
+
+haltTopic :: Topic TIO a
 haltTopic = Topic $ do
-    mv <- newEmptyMVar
-    a <- readMVar mv
+    a <- liftIO $ halt
     return (a,haltTopic)
 
-accelerateTopic :: Double -> Topic IO a -> Node (Topic IO a)
+accelerateTopic :: Double -> Topic TIO a -> Node (Topic TIO a)
 accelerateTopic hz t = do
     mvar <- liftIO $ newEmptyMVar 
-    _ <- flip runHandler t $ \a -> tryTakeMVar mvar >> putMVar mvar a
-    return $ Topic.topicRate hz $ Topic.repeatM $ readMVar mvar
+    _ <- flip runHandler t $ \a -> liftIO $ tryTakeMVar mvar >> putMVar mvar a
+    return $ Topic.topicRate hz $ Topic.repeatM $ liftIO $ readMVar mvar
 
 defaultRate :: Double
 defaultRate = 10
@@ -74,30 +80,38 @@ fmap3 f = fmap (fmap (fmap f))
 
 data UserEvent = UserEvent
     { userEventChan :: TChan ()
-    , userEventTopic :: Topic IO ()
+    , userEventTopic :: Topic TIO ()
     }
 
-userEvents :: MVar (Map TypeRep UserEvent)
-{-# NOINLINE userEvents #-}
-userEvents = unsafePerformIO (newMVar Map.empty)
+newUserEvents :: IO (MVar (Map TypeRep UserEvent))
+newUserEvents = newMVar Map.empty
 
-getUserEvent :: TypeRep -> IO UserEvent
-getUserEvent ty = modifyMVar userEvents $ \events -> do
-    case Map.lookup ty events of
-        Just e -> return (events,e)
-        Nothing -> do
-            c <- newTChanIO
-            let stream = Topic $ do { x <- atomically (readTChan c); return (x, stream) }
-            stream' <- liftIO $ Topic.share stream
-            let e = UserEvent c stream'
-            return (Map.insert ty e events,e)
+getUserEvent :: TypeRep -> UserNode UserEvent
+getUserEvent ty = do
+    (e,tid) <- getUserEvent' ty
+    lift $ mapM_ (addCleanup . killThread) tid
+    return e
 
-publishedEvent :: Typeable a => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+getUserEvent' :: TypeRep -> UserNode (UserEvent,Maybe ThreadId)
+getUserEvent' ty = do
+    v <- asks userEvents
+    ts <- lift $ getThreads
+    liftIO $ modifyMVar v $ \events -> do
+        case Map.lookup ty events of
+            Just e -> return (events,(e,Nothing))
+            Nothing -> do
+                c <- newTChanIO
+                let stream = Topic $ do { x <- liftIO (atomically (readTChan c)); return (x, stream) }
+                (stream',tid) <- runReaderT (Topic.shareUnsafe stream) ts
+                let e = UserEvent c stream'
+                return (Map.insert ty e events,(e,Just tid))
+
+publishedEvent :: Typeable a => Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
 publishedEvent = publishedEventType undefined
     
-publishedEventType :: Typeable a => a -> Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+publishedEventType :: Typeable a => a -> Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
 publishedEventType ty topic = do
-    e <- liftIO $ getUserEvent (typeOf ty)
+    e <- getUserEvent (typeOf ty)
     let write m = do
             mb <- m
             case mb of
@@ -105,24 +119,23 @@ publishedEventType ty topic = do
                 Just a -> writeTChan (userEventChan e) (unsafeCoerce a)
     return $ fmap write topic
 
-subscribedEvent :: Typeable a => Node (Topic IO (STM a))
-subscribedEvent = subscribedROS $ subscribedEventType undefined
+subscribedEvent :: Typeable a => UserNode (Topic TIO (STM a))
+subscribedEvent = subscribedSTM $ subscribedEventType undefined
 
-subscribedEventType :: Typeable a => a -> Node (Topic IO a)
+subscribedEventType :: Typeable a => a -> UserNode (Topic TIO a)
 subscribedEventType ty = do
-        e <- liftIO $ getUserEvent (typeOf ty)
-        return $ fmap unsafeCoerce (userEventTopic e)
+    e <- getUserEvent (typeOf ty)
+    return $ fmap unsafeCoerce (userEventTopic e)
 
 -- * User Memory
 
 type UserMemory = TVar ()
 
-userMemories :: MVar (Map TypeRep UserMemory)
-{-# NOINLINE userMemories #-}
-userMemories = unsafePerformIO (newMVar Map.empty)
+newUserMemories :: IO (MVar (Map TypeRep UserMemory))
+newUserMemories = newMVar Map.empty
 
-getUserMemory :: Typeable a => a -> IO (TVar a)
-getUserMemory a = modifyMVar userMemories $ \memories -> do
+getUserMemory :: Typeable a => a -> UserNode (TVar a)
+getUserMemory a = asks userMemories >>= \v -> liftIO $ modifyMVar v $ \memories -> do
     let ty = typeOf a
     case Map.lookup ty memories of
         Just v -> return (memories,unsafeCoerce v)
@@ -130,9 +143,9 @@ getUserMemory a = modifyMVar userMemories $ \memories -> do
             v <- newTVarIO a
             return (Map.insert ty (unsafeCoerce v) memories,v)
 
-publishedMemory :: (D.Default a,Typeable a) => Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+publishedMemory :: (D.Default a,Typeable a) => Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
 publishedMemory t = do
-    tv <- liftIO $ getUserMemory D.def
+    tv <- getUserMemory D.def
     let write m = do
             mb <- m
             case mb of
@@ -140,9 +153,9 @@ publishedMemory t = do
                 Just a -> writeTVar tv a
     return $ fmap write t
 
-subscribedMemory :: (D.Default a,Typeable a) => Node (Topic IO (STM a))
+subscribedMemory :: (D.Default a,Typeable a) => UserNode (Topic TIO (STM a))
 subscribedMemory = do
-    tv <- liftIO $ getUserMemory D.def
+    tv <- getUserMemory D.def
     return $ Topic.topicRate defaultRate $ Topic.repeat $ readTVar tv
 
 data Memory a = Memory a
@@ -153,18 +166,36 @@ instance D.Default a => D.Default (Memory a) where
 
 -- * Controllers
 
+data UserState = UserState
+    { userEvents   :: MVar (Map TypeRep UserEvent)
+    , userMemories :: MVar (Map TypeRep UserMemory)
+    } deriving (Typeable, G.Generic)
+type UserNode = ReaderT UserState Node 
+
+newUserState :: IO UserState
+newUserState = do
+    es <- newUserEvents
+    ms <- newUserMemories
+    return $ UserState es ms
+
+runUserNode :: UserNode a -> Node a
+runUserNode n = liftIO newUserState >>= runReaderT n
+
 -- | Command the robot to speak some sentence.
 data Say = Say String
   deriving (Show, Eq, Ord, Typeable, G.Generic)
 
 class Subscribed a where
-    subscribed :: Node (Topic IO (STM a))
+    subscribed :: UserNode (Topic TIO (STM a))
 
 instance (D.Default a,Typeable a) => Subscribed (Memory a) where
     subscribed = subscribedMemory
 
-subscribedROS :: Node (Topic IO a) -> Node (Topic IO (STM a))
-subscribedROS n = do
+subscribedROS :: Node (Topic TIO a) -> UserNode (Topic TIO (STM a))
+subscribedROS n = lift $ subscribedSTM n
+
+subscribedSTM :: Monad n => n (Topic TIO a) -> n (Topic TIO (STM a))
+subscribedSTM n = do
     t <- n
     return $ fmap return t
 
@@ -229,21 +260,21 @@ clockFromUTCTime utc = Clock h m s
 instance D.Default Clock
 
 instance Subscribed Clock where
-    subscribed = return $ Topic.topicRate 1 $ Topic.repeatM $ liftM (return . clockFromUTCTime) getCurrentTime
+    subscribed = return $ Topic.topicRate 1 $ Topic.repeatM $ liftM (return . clockFromUTCTime) (lift getCurrentTime)
     
 class Published a where
     -- the output topic preserves the periodicity of the input topic
-    published :: Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
+    published :: Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
     
 instance (D.Default a,Typeable a) => Published (Memory a) where
     published = publishedMemory
     
 -- writes to a transactional buffer, and buffer gets advertised to ROS
-publishedROS :: (Topic IO a -> Node ()) -> Topic IO (STM (Maybe a)) -> Node (Topic IO (STM ()))
-publishedROS adv t = do
+publishedROS :: (Topic TIO a -> Node ()) -> Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
+publishedROS adv t = lift $ do
     chan <- liftIO $ newTChanIO
     let chanTopic = Topic $ do
-            x <- atomically $ readTChan chan
+            x <- lift $ atomically $ readTChan chan
             return (x,chanTopic)
     adv chanTopic
     let put m = do
@@ -253,32 +284,11 @@ publishedROS adv t = do
                 Just a -> writeTChan chan a
     return $ fmap put t
     
---interleaveT :: Topic IO (m ()) -> Topic IO (m ()) -> Topic IO (m ())
---interleaveT t1 t2 = fmap (either id id) (t1 <+> t2)
-    
---leftT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe a))
---leftT tab = fmap2 go tab
---    where
---    go (Just (Left a)) = Just a
---    go _ = Nothing
---
---rightT :: Monad m => Topic IO (m (Maybe (Either a b))) -> Topic IO (m (Maybe b))
---rightT tab = fmap2 go tab
---    where
---    go (Just (Right b)) = Just b
---    go _ = Nothing
-
---fstT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe a))
---fstT = fmap3 fst
---
---sndT :: Monad m => Topic IO (m (Maybe (a,b))) -> Topic IO (m (Maybe b))
---sndT = fmap3 snd
-    
-mergeT :: Monad m => Topic IO (m ()) -> Topic IO (m ()) -> Topic IO (m ())
+mergeT :: Monad m => Topic TIO (m ()) -> Topic TIO (m ()) -> (Topic TIO (m ()))
 mergeT t1 t2 = fmap (uncurry (>>)) $ Topic.bothNew t1 t2
     
 instance Published Say where
-    published = publishedROS $ \t -> runHandler (\(Say str) -> reportMessage str) t >> return ()
+    published = publishedROS $ \t -> runHandler (\(Say str) -> liftIO $ reportMessage str) t >> return ()
 
 instance (Published a,Published b) => Published (a,b) where
     published tab = do
@@ -288,13 +298,7 @@ instance (Published a,Published b) => Published (a,b) where
         let tb = flip fmap tab $ const $ liftM (fmap snd) $ readTVar pair
         ta' <- published ta
         tb' <- published tb
-        return $ mergeT t' $ mergeT ta' tb'
-    
-    --published t = do
-    --    (ta,tb) <- liftIO $ fmap (fstT >< sndT) $ Topic.tee t
-    --    ta' <- published ta
-    --    tb' <- published tb
-    --    return $ mergeT ta' tb'
+        return $ mergeT t' (mergeT ta' tb')
 
 instance (Published a,Published b,Published c) => Published (a,b,c) where
     published t = published $ fmap3 (\(a,b,c) -> (a,(b,c))) t
@@ -335,13 +339,7 @@ instance (Published a,Published b) => Published (Either a b) where
                     Just (Right b) -> return $ Just b
         ta' <- published ta
         tb' <- published tb
-        return $ mergeT t' $ mergeT ta' tb'
-    
-    --published tab = do
-    --    (ta,tb) <- liftIO $ fmap (leftT >< rightT) $ Topic.tee tab
-    --    ta' <- published ta
-    --    tb' <- published tb
-    --    return $ interleaveT ta' tb'
+        return $ mergeT t' (mergeT ta' tb')
 
 instance (Published a) => Published (Maybe a) where
     published t = do
@@ -363,12 +361,12 @@ instance (Subscribed a,Published b) => Published (a -> b) where
 -- * Controllers
 
 class Controller a where
-    controller :: a -> Node ()
+    controller :: a -> UserNode ()
     
 instance {-# OVERLAPPABLE #-} Published b => Controller b where
     controller b = do
         go <- published $ Topic.topicRate defaultRate $ Topic.repeat (return $ Just b)
-        _ <- runHandler atomically go
+        _ <- lift $ runHandler (lift . atomically) go
         return ()
 
 instance Controller a => Controller [a] where
