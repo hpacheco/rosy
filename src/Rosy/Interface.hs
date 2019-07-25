@@ -73,8 +73,8 @@ until go = Task $ do
 forever :: Controller b => b -> Task ()
 forever go = Task $ do
     runUserNode $ controller go
-    liftIO $ putStrLn "done"
-    liftIO $ threadDelay $ 2 * 10^6
+    --liftIO $ putStrLn "done"
+    --liftIO $ threadDelay $ 2 * 10^6
 
 simulateTask :: Task a -> IO ()
 simulateTask = simulateTaskIn world1
