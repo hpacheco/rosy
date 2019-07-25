@@ -112,6 +112,9 @@ updateRobotVelocity st = do
 
 runRobotPhysics :: WorldState -> Node ThreadId
 runRobotPhysics w = liftIO $ do
+    let ww = _worldStateWorld w
+    let (Controller.Position initx inity) = _worldInitialPosition ww
+    let (Controller.Orientation initori) = _worldInitialOrientation ww
     let st = _worldStateRobot w
     go <- rateLimiter robotFrequency $ atomically $ do
         -- original robot position + velocity
@@ -120,9 +123,9 @@ runRobotPhysics w = liftIO $ do
         let vlin = Vector3._x $ Twist._linear $ TwistWithCovariance._twist $ Odometry._twist o
         let vrot = Vector3._z $ Twist._angular $ TwistWithCovariance._twist $ Odometry._twist o
         let pos = Pose._position $ PoseWithCovariance._pose $ Odometry._pose o
-        let px = Point._x pos
-        let py = Point._y pos
-        let Controller.Orientation rads = Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o
+        let px = initx + Point._x pos
+        let py = inity + Point._y pos
+        let rads = initori + Controller.orientation (Controller.orientationFromROS $ Pose._orientation $ PoseWithCovariance._pose $ Odometry._pose o)
         --unsafeIOToSTM $ putStrLn $ "old position " ++ show (px,py)
         
         -- acceleration towards desired velocity
