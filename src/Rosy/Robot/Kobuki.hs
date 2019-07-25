@@ -112,7 +112,7 @@ updateRobotVelocity st = do
 
 runRobotPhysics :: WorldState -> Node ThreadId
 runRobotPhysics w = liftIO $ do
-    let st = _worldRobot w
+    let st = _worldStateRobot w
     go <- rateLimiter robotFrequency $ atomically $ do
         -- original robot position + velocity
         o <- readTVar (_robotOdom st)
@@ -223,7 +223,7 @@ findRobotCollision w pXY@(pX,pY) = case collisions of
     [] -> Nothing
     (unzip -> (ps,ns)) -> Just (averageVec ps,normVec $ angleVec $ sumVec ns)
   where
-    m = _worldMap w
+    m = _worldMap $ _worldStateWorld w
     minX = pX - robotRadius
     maxX = pX + robotRadius
     minY = pY - robotRadius
@@ -299,13 +299,13 @@ posCell w p = mapCell w (posToMap w p)
 mapCell :: WorldState -> DPoint -> Maybe Cell
 mapCell w (pl,pc) = Monad.join $ fmap (flip atMay $ floor pc) (m `atMay` floor pl)
     where
-    m = _worldMap w
+    m = _worldMap $ _worldStateWorld w
 
 -- converts a world position to a map position
 posToMap :: WorldState -> DPoint -> DPoint
 posToMap w (px,py) = (ml/2 - py/mapCellSize,mc/2 + px/mapCellSize)
     where
-    m = _worldMap w
+    m = _worldMap $ _worldStateWorld w
     (realToFrac -> ml,realToFrac -> mc) = mapSize m
 
 posXToMapC,posYToMapL :: WorldState -> Double -> Double
@@ -316,7 +316,7 @@ posYToMapL w = fst . posToMap w . (0,)
 mapToPos :: WorldState -> DPoint -> DPoint
 mapToPos w (pl,pc) = ((pc - mc/2) * mapCellSize,(-pl + ml/2) * mapCellSize)
     where
-    m = _worldMap w
+    m = _worldMap $ _worldStateWorld w
     (realToFrac -> ml,realToFrac -> mc) = mapSize m
 
 robotCells :: WorldState -> DPoint -> [Cell]
@@ -392,7 +392,7 @@ writeRobotState = do
 
 runRobotNodes :: WorldState -> Node [ThreadId]
 runRobotNodes w = do
-    let st = _worldRobot w
+    let st = _worldStateRobot w
     t0 <- readRobotSound st
     t1 <- readRobotLed1 st
     t2 <- readRobotLed2 st

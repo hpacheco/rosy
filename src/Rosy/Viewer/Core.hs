@@ -42,17 +42,17 @@ import System.FilePath
 
 runViewer :: WorldState -> IO ()
 runViewer w = do
-    playIO (_worldDisplay w) (greyN 0.5) 30 w drawIO eventIO timeIO
+    playIO (_worldStateDisplay w) (greyN 0.5) 30 w drawIO eventIO timeIO
 
 drawIO :: WorldState -> IO Picture
 drawIO w = do
-    o <- atomically $ readTVar (_robotOdom $ _worldRobot w)
-    let wdw1 = map (map drawCell) (_worldMap w)
+    o <- atomically $ readTVar (_robotOdom $ _worldStateRobot w)
+    let wdw1 = map (map drawCell) (_worldMap $ _worldStateWorld w)
     wdw2 <- drawBotIO w o
     wdw3 <- drawMenuIO w o
     let wdw = W.many [W.vhsSquare wdw1,wdw2]
     --return $ wdw (_worldDimension w)
-    return $ W.many [wdw,wdw3] (_worldDimension w)
+    return $ W.many [wdw,wdw3] (_worldStateDimension w)
 
 groundColor = greyN 0.4 -- medium dark grey
 wallColor  = makeColor 0.5 0.25 0.25 1 -- redish
@@ -71,7 +71,7 @@ drawCell Hole = Color holeColor . W.rectangleSolid
 scalePx :: WorldState -> Float -> Dimension -> Float
 scalePx w m (dx,dy) = px
     where
-    (mx,my) = mapSize $ _worldMap w
+    (mx,my) = mapSize $ _worldMap $ _worldStateWorld w
     cellPx = min (realToFrac dx / realToFrac mx) (realToFrac dy / realToFrac my)
     px = (cellPx * m) / realToFrac mapCellSize
 
@@ -111,75 +111,78 @@ ledColor l = case Led._value l of
 drawBotIO :: WorldState -> Odometry -> IO Window
 drawBotIO w o = do
     let mkLed1 = do
-            c <- liftM ledColor $ atomically $ readTVar (_robotLed1 $ _worldRobot w)
+            c <- liftM ledColor $ atomically $ readTVar (_robotLed1 $ _worldStateRobot w)
             return $ \r -> Translate (-r*1/3) (r*3/4) $ Color c $ circleSolid (r/10)
     let mkLed2 = do
-            c <- liftM ledColor $ atomically $ readTVar (_robotLed2 $ _worldRobot w)
+            c <- liftM ledColor $ atomically $ readTVar (_robotLed2 $ _worldStateRobot w)
             return $ \r -> Translate (-r*1/3) (r*2/4) $ Color c $ circleSolid (r/10)
     l1 <- mkLed1
     l2 <- mkLed2
     let mkButton0 = do
-            isOn <- atomically $ readTVar (_eventState . _robotButton0 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton0 $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*1/4) $ Color c $ rectangleSolid (r/5) (r/5)
     let mkButton1 = do
-            isOn <- atomically $ readTVar (_eventState . _robotButton1 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton1 $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*2/4) $ Color c $ rectangleSolid (r/5) (r/5)
     let mkButton2 = do
-            isOn <- atomically $ readTVar (_eventState . _robotButton2 $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState . _robotButton2 $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (-r*1/3) (-r*3/4) $ Color c $ rectangleSolid (r/5) (r/5)
     bu0 <- mkButton0
     bu1 <- mkButton1
     bu2 <- mkButton2
     let mkBumperL = do
-            isOn <- atomically $ readTVar (_eventState $ _robotBumperL $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperL $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate 15 $ Color c $ thickArc 60 90 r (r/10)
     let mkBumperC = do
-            isOn <- atomically $ readTVar (_eventState $ _robotBumperC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperC $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate 15 $ Color c $ thickArc 0 30 r (r/10)
     let mkBumperR = do
-            isOn <- atomically $ readTVar (_eventState $ _robotBumperR $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotBumperR $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (-15) $ Color c $ thickArc (-60) (-90) r (r/10)
     bl <- mkBumperL
     bc <- mkBumperC
     br <- mkBumperR
     let mkCliffL = do
-            isOn <- atomically $ readTVar (_eventState $ _robotCliffL $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffL $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (-60) $ Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     let mkCliffC = do
-            isOn <- atomically $ readTVar (_eventState $ _robotCliffC $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffC $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     let mkCliffR = do
-            isOn <- atomically $ readTVar (_eventState $ _robotCliffR $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotCliffR $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Rotate (60) $ Translate (r*3/4) 0 $ Color c $ circleSolid (r/7)
     cl <- mkCliffL
     cc <- mkCliffC
     cr <- mkCliffR
     let mkWheelL = do
-            isOn <- atomically $ readTVar (_eventState $ _robotWheelL $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotWheelL $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate 0 (r/3) $ Color c $ rectangleSolid (r*2/5) (r*1/5)
     let mkWheelR = do
-            isOn <- atomically $ readTVar (_eventState $ _robotWheelR $ _worldRobot w)
+            isOn <- atomically $ readTVar (_eventState $ _robotWheelR $ _worldStateRobot w)
             let c = if isOn then bumperOnColor else bumperOffColor
             return $ \r -> Translate 0 (-r/3) $ Color c $ rectangleSolid (r*2/5) (r*1/5)
     wh1 <- mkWheelL
     wh2 <- mkWheelR
+    let ww = _worldStateWorld w
     let metal = Color robotColor . circleSolid
     let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r,wh1 r,wh2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     let pose = PoseWithCovariance._pose $ Odometry._pose o
-    let ang = radiansToDegrees $ realToFrac $ Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose
-    let posx = realToFrac $ Point._x $ Pose._position pose
-    let posy = realToFrac $ Point._y $ Pose._position pose
+    let initori@(Controller.Orientation initang) = _worldInitialOrientation ww
+    let ang = radiansToDegrees $ realToFrac initang + realToFrac (Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose)
+    let initpos@(Controller.Position initx inity) = _worldInitialPosition ww
+    let posx = realToFrac initx + realToFrac (Point._x $ Pose._position pose)
+    let posy = realToFrac inity + realToFrac (Point._y $ Pose._position pose)
     return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
 
 eventIO :: Event -> WorldState -> IO WorldState
@@ -187,7 +190,7 @@ eventIO (EventKey (Char '0') kst _ _) w = reactButton _robotButton0 kst w
 eventIO (EventKey (Char '1') kst _ _) w = reactButton _robotButton1 kst w
 eventIO (EventKey (Char '2') kst _ _) w = reactButton _robotButton2 kst w
 eventIO (EventKey (SpecialKey k@(isArrowKey -> True)) Down _ _) w = changeVel k w
-eventIO (EventResize d) w = return $ set worldDimension d w
+eventIO (EventResize d) w = return $ set worldStateDimension d w
 eventIO e w = return w
 
 isArrowKey :: SpecialKey -> Bool
@@ -202,12 +205,12 @@ keyStateToBool Down = True
 keyStateToBool Up = False
 
 reactButton :: (RobotState -> RobotEventState) -> KeyState -> WorldState -> IO WorldState
-reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ _worldRobot w) (keyStateToBool kst) >> return w
+reactButton getButton kst w = atomically $ changeRobotEventState (getButton $ _worldStateRobot w) (keyStateToBool kst) >> return w
 
 -- Values taken from the kobuki_keyop: 0.05, 0.33
 changeVel :: SpecialKey -> WorldState -> IO WorldState
 changeVel k w = atomically $ do
-    modifyTVar (_worldVel w) chg
+    modifyTVar (_worldStateVel w) chg
     return w
   where
     chg = case k of
@@ -222,7 +225,7 @@ timeIO t w = return w
 writeViewerVelocity :: WorldState -> Node ()
 writeViewerVelocity w = do
     go <- liftIO $ rateLimiter keyOpFrequency $ atomically $ do
-        v <- readTVar (_worldVel w)
+        v <- readTVar (_worldStateVel w)
         if (v==D.def)
             then return Nothing
             else return $ Just $ Controller.velocityToROS v

@@ -32,16 +32,25 @@ import Graphics.Gloss.Interface.Environment
 import Lens.Family.TH
 import Lens.Family (over,set)
 
-type World = [[Cell]]
+type WorldMap = [[Cell]]
 data Cell = Grnd | Wall | Hole
     deriving (Show,Typeable, G.Generic,Eq)
 
+data World = World
+    { _worldMap :: WorldMap
+    , _worldInitialPosition :: Controller.Position
+    , _worldInitialOrientation :: Controller.Orientation
+    }
+    deriving (Show,Typeable, G.Generic,Eq)
+   
+$(makeLenses ''World)
+
 data WorldState = WorldState
-    { _worldDisplay :: Display -- initial gloss display static
-    , _worldDimension :: Dimension -- dimension of the screen in pixels, may be resized
-    , _worldMap :: World -- static
-    , _worldRobot :: RobotState -- static
-    , _worldVel :: TVar Controller.Velocity -- keyop for desired velocity
+    { _worldStateDisplay :: Display -- initial gloss display static
+    , _worldStateDimension :: Dimension -- dimension of the screen in pixels, may be resized
+    , _worldStateWorld :: World -- static
+    , _worldStateRobot :: RobotState -- static
+    , _worldStateVel :: TVar Controller.Velocity -- keyop for desired velocity
     } deriving (Typeable, G.Generic)
     
 $(makeLenses ''WorldState)
@@ -62,38 +71,44 @@ newWorldState wmap = do
     return $ WorldState display dimension wmap robotInit vel
     
 world1 :: World
-world1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
-         ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
+world1 = World worldMap1 (Controller.Position 0 0) (Controller.Orientation 0)
+    
+worldMap1 :: WorldMap
+worldMap1 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
+            ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
 world2 :: World
-world2 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
-         ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
-         ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
+world2 = World worldMap2 (Controller.Position 0 0) (Controller.Orientation 0)
+
+worldMap2 :: WorldMap
+worldMap2 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Hole,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall]
+            ,[Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Grnd,Grnd,Wall]
+            ,[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
 -- | Size of each map cell in m.
 mapCellSize :: Double
 mapCellSize = 0.32
 
-mapSize :: World -> Dimension
+mapSize :: WorldMap -> Dimension
 mapSize [] = (0,0)
 mapSize (l:ls) = (length l,succ $ length ls)
 
