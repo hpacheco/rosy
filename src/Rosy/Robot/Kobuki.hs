@@ -174,9 +174,9 @@ runRobotPhysics w = liftIO $ do
         
         let chgV vx vz twist = set (Twist.linear . Vector3.x) vx
                        $ set (Twist.angular . Vector3.z) vz twist
-        let chgP (px,py) rads pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation rads)
-                      $ set (Pose.position . Point.x) px
-                      $ set (Pose.position . Point.y) py pose
+        let chgP (px,py) rads pose = set (Pose.orientation) (Controller.orientationToROS $ Controller.Orientation $ rads - initori)
+                      $ set (Pose.position . Point.x) (px - initx)
+                      $ set (Pose.position . Point.y) (py - inity) pose
         let chgVP vx vd vz p rads = do
                 writeTVar (_robotDrag st) vd
                 writeTVar (_robotOdom st) $
