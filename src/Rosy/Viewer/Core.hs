@@ -178,11 +178,11 @@ drawBotIO w o = do
     let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r,wh1 r,wh2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     let pose = PoseWithCovariance._pose $ Odometry._pose o
-    let initori@(Controller.Orientation initang) = _worldInitialOrientation ww
-    let ang = radiansToDegrees $ realToFrac initang + realToFrac (Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose)
-    let initpos@(Controller.Position initx inity) = _worldInitialPosition ww
-    let posx = realToFrac initx + realToFrac (Point._x $ Pose._position pose)
-    let posy = realToFrac inity + realToFrac (Point._y $ Pose._position pose)
+    --let initori@(Controller.Orientation initang) = _worldInitialOrientation ww
+    let ang = radiansToDegrees $ {-realToFrac initang + -}realToFrac (Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose)
+    --let initpos@(Controller.Position initx inity) = _worldInitialPosition ww
+    let posx = {-realToFrac initx + -} realToFrac (Point._x $ Pose._position pose)
+    let posy = {-realToFrac inity + -} realToFrac (Point._y $ Pose._position pose)
     return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
 
 eventIO :: Event -> WorldState -> IO WorldState
