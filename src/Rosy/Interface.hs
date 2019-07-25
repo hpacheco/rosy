@@ -30,9 +30,9 @@ control n = runNode "rosy-simulator" (controller n)
 
 startNode :: Node () -> WorldState -> IO ()
 startNode n w = runNode "rosy-simulator" $ do
-    n
     runViewerNodes w
     runRobotNodes w
+    n
 
 -- | The main function that produces a Rosy program.
 -- It receives a robot 'Controller' that does the actual job of interacting with your robot.

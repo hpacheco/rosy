@@ -132,4 +132,4 @@ inverte (Memory Tras) = Memory Frente
 sayInv :: Inverte -> Say
 sayInv _ = Say "inv"
 
-main = simulate (avanca,sayInv)--aviso,bumper,parede)
+main = simulate (Velocity 0.2 0)--,sayInv)--aviso,bumper,parede)
