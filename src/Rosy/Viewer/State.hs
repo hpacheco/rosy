@@ -91,7 +91,7 @@ world2 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
 
 -- | Size of each map cell in m.
 mapCellSize :: Double
-mapCellSize = 0.3
+mapCellSize = 0.32
 
 mapSize :: World -> Dimension
 mapSize [] = (0,0)
