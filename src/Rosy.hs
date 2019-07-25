@@ -7,7 +7,7 @@ module Rosy
     ( 
     -- $intro
     -- * Robot programming
-      simulate
+      simulate, simulateIn, world1, world2, world3
     -- * Robot controllers
     --
     {-| A robot 'Controller' is a function:
