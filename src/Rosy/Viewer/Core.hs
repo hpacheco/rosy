@@ -51,7 +51,6 @@ drawIO w = do
     wdw2 <- drawBotIO w o
     wdw3 <- drawMenuIO w o
     let wdw = W.many [W.vhsSquare wdw1,wdw2]
-    --return $ wdw (_worldDimension w)
     return $ W.many [wdw,wdw3] (_worldStateDimension w)
 
 groundColor = greyN 0.4 -- medium dark grey
@@ -71,8 +70,8 @@ drawCell Hole = Color holeColor . W.rectangleSolid
 scalePx :: WorldState -> Float -> Dimension -> Float
 scalePx w m (dx,dy) = px
     where
-    (mx,my) = mapSize $ _worldMap $ _worldStateWorld w
-    cellPx = min (realToFrac dx / realToFrac mx) (realToFrac dy / realToFrac my)
+    (ml,mc) = mapSize $ _worldMap $ _worldStateWorld w
+    cellPx = min (realToFrac dx / realToFrac mc) (realToFrac dy / realToFrac ml)
     px = (cellPx * m) / realToFrac mapCellSize
 
 scalePointPx :: WorldState -> (Float,Float) -> Dimension -> (Float,Float)
@@ -178,11 +177,11 @@ drawBotIO w o = do
     let mkRobot r = [metal r,bl r,bc r, br r,cl r,cc r,cr r,l1 r, l2 r,bu0 r,bu1 r,bu2 r,wh1 r,wh2 r]
     let robot = Pictures . mkRobot . scalePx w (realToFrac robotRadius)
     let pose = PoseWithCovariance._pose $ Odometry._pose o
-    --let initori@(Controller.Orientation initang) = _worldInitialOrientation ww
-    let ang = radiansToDegrees $ {-realToFrac initang + -}realToFrac (Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose)
-    --let initpos@(Controller.Position initx inity) = _worldInitialPosition ww
-    let posx = {-realToFrac initx + -} realToFrac (Point._x $ Pose._position pose)
-    let posy = {-realToFrac inity + -} realToFrac (Point._y $ Pose._position pose)
+    let initori@(Controller.Orientation initang) = _worldInitialOrientation ww
+    let ang = radiansToDegrees $ realToFrac initang + realToFrac (Controller.orientation $ Controller.orientationFromROS $ Pose._orientation pose)
+    let initpos@(Controller.Position initx inity) = _worldInitialPosition ww
+    let posx = realToFrac initx + realToFrac (Point._x $ Pose._position pose)
+    let posy = realToFrac inity + realToFrac (Point._y $ Pose._position pose)
     return $ \dim -> Translate (scalePx w posx dim) (scalePx w posy dim) $ Rotate (-ang) $ robot dim
 
 eventIO :: Event -> WorldState -> IO WorldState
