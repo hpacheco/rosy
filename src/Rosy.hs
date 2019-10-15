@@ -109,7 +109,12 @@ module Rosy
     -- |
     --
     -- * The current time.
-    , Clock(..)
+    , module Rosy.Controller.Time
+    --
+    -- |
+    --
+    -- * A randomness generator
+    , StdGen(..)
     --
     -- ** Robot actions (outputs)
     --
@@ -164,9 +169,12 @@ module Rosy
     , roundFloating
     , ceilingFloating
     , module Prelude
+    , module System.Random
+    , module Data.Time.Clock
     ,
     ) where
 
+import Rosy.Controller.Time
 import Rosy.Controller.Core
 import Rosy.Controller.Kobuki
 import Rosy.Robot.Kobuki
@@ -176,6 +184,8 @@ import Rosy.Viewer.State
 import Rosy.Interface
 import Rosy.Util
 import Prelude
+import Data.Time.Clock
+import System.Random
 
 --------------------------------------------------------------------------------
 -- $intro

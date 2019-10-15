@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
 
 module Rosy.Controller.Core where
 
@@ -19,6 +19,7 @@ import Ros.Topic.Util (TIO,(<+>))
 import qualified Ros.Topic as Topic
 import qualified Ros.Topic.Util as Topic
 import Data.Time.Clock
+import Data.Time.Clock.POSIX
 import Ros.Rate
 
 import Rosy.Util
@@ -30,12 +31,16 @@ import Control.Monad.State (StateT(..),gets)
 import qualified Control.Monad.State as State
 import Control.Monad.Reader (ReaderT(..),asks)
 import qualified Control.Monad.Reader as Reader
-import GHC.Conc.Sync
+import GHC.Conc.Sync hiding (modifyMVar_)
 import Control.Concurrent.STM
 import Control.Concurrent
 
 import Unsafe.Coerce
 import System.IO.Unsafe
+import System.Random
+
+liftTIO :: IO a -> TIO a
+liftTIO = liftIO
 
 #if defined(ghcjs_HOST_OS)
 import Graphics.Gloss.Interface.Environment
@@ -60,6 +65,9 @@ haltTopic :: Topic TIO a
 haltTopic = Topic $ do
     a <- liftIO $ halt
     return (a,haltTopic)
+    
+singleTopic :: a -> Topic TIO a
+singleTopic x = Topic.cons x haltTopic
 
 accelerateTopic :: Double -> Topic TIO a -> Node (Topic TIO a)
 accelerateTopic hz t = do
@@ -179,7 +187,10 @@ newUserState = do
     return $ UserState es ms
 
 runUserNode :: UserNode a -> Node a
-runUserNode n = liftIO newUserState >>= runReaderT n
+runUserNode n = do
+    st <- liftIO newUserState
+    a <- runReaderT n st
+    return a
 
 -- | Command the robot to speak some sentence.
 data Say = Say String
@@ -239,31 +250,13 @@ instance (Subscribed a) => Subscribed (Maybe a) where
         
 instance Subscribed () where
     subscribed = return $ Topic.topicRate defaultRate $ Topic.repeat (return ())
-    
--- | The current time in hours, minutes and seconds.
-data Clock = Clock
-    { hours   :: Int
-    , minutes :: Int
-    , seconds :: Int
-    } deriving (Show, Eq, Ord, Typeable, G.Generic)
-    
-$(makeLensesBy (Just . (++"Lens")) ''Clock)
 
-clockFromUTCTime :: UTCTime -> Clock
-clockFromUTCTime utc = Clock h m s
-    where
-    diff = utctDayTime utc
-    h = remBy 24 $ quotBy 3600 diff
-    m = remBy 60 $ quotBy 60 diff
-    s = remBy 60 $ quotBy 1 diff
-
-instance D.Default Clock
-
-instance Subscribed Clock where
-    subscribed = return $ Topic.topicRate 1 $ Topic.repeatM $ liftM (return . clockFromUTCTime) (lift getCurrentTime)
+instance Subscribed StdGen where
+    subscribed = return $ Topic.topicRate defaultRate $ Topic.repeatM $ liftM return $ lift newStdGen
     
 class Published a where
     -- the output topic preserves the periodicity of the input topic
+    -- the output is a topic of transactions that publish each value
     published :: Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
     
 instance (D.Default a,Typeable a) => Published (Memory a) where
@@ -293,9 +286,11 @@ instance Published Say where
 instance (Published a,Published b) => Published (a,b) where
     published tab = do
         pair <- liftIO $ newTVarIO (error "no pair value")
-        let t' = fmap (\mx -> mx >>= writeTVar pair) tab
-        let ta = flip fmap tab $ const $ liftM (fmap fst) $ readTVar pair
-        let tb = flip fmap tab $ const $ liftM (fmap snd) $ readTVar pair
+        (tab1,tab23) <- lift $ nodeTIO $ Topic.tee tab
+        (tab2,tab3) <- lift $ nodeTIO $ Topic.tee tab23
+        let t' = flip fmap tab1 $ \mx -> mx >>= writeTVar pair
+        let ta = flip fmap tab2 $ const $ liftM (fmap fst) $ readTVar pair
+        let tb = flip fmap tab3 $ const $ liftM (fmap snd) $ readTVar pair
         ta' <- published ta
         tb' <- published tb
         return $ mergeT t' (mergeT ta' tb')
@@ -324,14 +319,16 @@ instance (Published a,Published b,Published c,Published d,Published e,Published 
 instance (Published a,Published b) => Published (Either a b) where
     published tab = do
         pair <- liftIO $ newTVarIO (error "no sum value")
-        let t' = fmap (\mx -> mx >>= writeTVar pair) tab
-        let ta = flip fmap tab $ const $ do
+        (tab1,tab23) <- lift $ nodeTIO $ Topic.tee tab
+        (tab2,tab3) <- lift $ nodeTIO $ Topic.tee tab23
+        let t' = flip fmap tab1 (\mx -> mx >>= writeTVar pair)
+        let ta = flip fmap tab2 $ const $ do
                 mbe <- readTVar pair
                 case mbe of
                     Nothing -> return Nothing
                     Just (Left a) -> return $ Just a
                     Just (Right b) -> return Nothing
-        let tb = flip fmap tab $ const $ do
+        let tb = flip fmap tab3 $ const $ do
                 mbe <- readTVar pair
                 case mbe of
                     Nothing -> return Nothing
