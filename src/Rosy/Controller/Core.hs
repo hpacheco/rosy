@@ -39,13 +39,13 @@ import Unsafe.Coerce
 import System.IO.Unsafe
 import System.Random
 
-liftTIO :: IO a -> TIO a
-liftTIO = liftIO
-
 #if defined(ghcjs_HOST_OS)
 import Graphics.Gloss.Interface.Environment
 #else
 #endif
+
+liftTIO :: IO a -> TIO a
+liftTIO = liftIO
 
 #if defined(ghcjs_HOST_OS)
 reportMessage :: String -> IO ()
