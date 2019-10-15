@@ -152,7 +152,10 @@ worldMap3 =
   [Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
 world4 :: World
-world4 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+world4 = World worldMap4 (Controller.Position 1 4) (Controller.Orientation pi)
+
+worldMap4 :: WorldMap
+worldMap4 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
          ,[Wall,Grnd,Grnd,Grnd,Wall,Wall,Wall,Wall,Grnd,Grnd,Wall,Wall]
