@@ -151,8 +151,8 @@ worldMap3 =
   [Wall,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall,Wall],
   [Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]]
 
-world3 :: World
-world3 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
+world4 :: World
+world4 = [[Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
          ,[Wall,Grnd,Hole,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Grnd,Wall,Wall]
          ,[Wall,Grnd,Grnd,Grnd,Wall,Wall,Wall,Wall,Grnd,Grnd,Wall,Wall]
