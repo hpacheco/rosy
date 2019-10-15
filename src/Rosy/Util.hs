@@ -110,3 +110,18 @@ average xs = sum xs / realToFrac (length xs)
 
 swap :: (a,b) -> (b,a)
 swap (x,y) = (y,x)
+
+fst4 :: (a,b,c,d) -> a
+fst4 (a,b,c,d) = a
+
+snd4 :: (a,b,c,d) -> b
+snd4 (a,b,c,d) = b
+
+thr4 :: (a,b,c,d) -> c
+thr4 (a,b,c,d) = c
+
+fou4 :: (a,b,c,d) -> d
+fou4 (a,b,c,d) = d
+
+
+

@@ -29,6 +29,7 @@ import Ros.Geometry_msgs.Point as Point
 
 import Control.Concurrent.STM
 import Control.Monad as Monad
+import Control.Monad.Trans
 import Data.Typeable
 import Data.Time.Clock
 import Data.Word as Word
@@ -78,23 +79,23 @@ soundCodeToFile 6 = "cleanindend.wav"
 readRobotSound :: RobotState -> Node ThreadId
 readRobotSound st = do
     sound <- subscribe (roshome </> "commands/sound")
-    flip runHandler sound $ \soundcode -> orNothing $ playSound (soundcode)
+    flip runHandler sound $ \soundcode -> liftIO $ orNothing $ playSound (soundcode)
 
 readRobotLed1 :: RobotState -> Node ThreadId
 readRobotLed1 st = do
     led <- subscribe (roshome </> "commands/led1")
     flip runHandler led $ \ledcolor -> do
-        atomically $ writeTVar (_robotLed1 st) ledcolor
+        liftIO $ atomically $ writeTVar (_robotLed1 st) ledcolor
 
 readRobotLed2 :: RobotState -> Node ThreadId
 readRobotLed2 st = do
     led <- subscribe (roshome </> "commands/led2")
-    flip runHandler led $ \ledcolor -> atomically $ writeTVar (_robotLed2 st) ledcolor
+    flip runHandler led $ \ledcolor -> liftIO $ atomically $ writeTVar (_robotLed2 st) ledcolor
 
 readRobotVelocity :: RobotState -> Node ThreadId
 readRobotVelocity st = do
     v <- subscribe (roshome </> "commands/velocity")
-    flip runHandler v $ \twist -> atomically $ do
+    flip runHandler v $ \twist -> liftIO $ atomically $ do
         now <- unsafeIOToSTM $ getCurrentTime
         writeTVar (_robotVel st) (twist,now)
 
@@ -332,68 +333,67 @@ robotCells w p = Maybe.catMaybes $ map (posCell w) ps
     
 writeRobotOdometry :: RobotState -> Node ()
 writeRobotOdometry st = do
-    advertise "odom" $ topicRate defaultRate $ repeatM $ atomically $ readTVar (_robotOdom st)
+    advertise "odom" $ topicRate defaultRate $ repeatM $ liftTIO $ atomically $ readTVar (_robotOdom st)
+  where
+    liftTIO :: IO a -> TIO a
+    liftTIO = liftIO
 
 writeRobotButtons :: RobotState -> Node ()
 writeRobotButtons st = do
-    let robotButtonTrigger0 = repeatM $ atomically $ do
+    let robotButtonTrigger0 = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotButton0 st)
             return $ ButtonEvent button_Button0 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
-    let robotButtonTrigger1 = repeatM $ atomically $ do
+    let robotButtonTrigger1 = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotButton1 st)
             return $ ButtonEvent button_Button1 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
-    let robotButtonTrigger2 = repeatM $ atomically $ do
+    let robotButtonTrigger2 = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotButton2 st)
             return $ ButtonEvent button_Button2 (if b then ButtonEvent.state_PRESSED else ButtonEvent.state_RELEASED)
-    advertise (roshome </> "events/button") $ Topic.mergeList
-        [robotButtonTrigger0,robotButtonTrigger1,robotButtonTrigger2]
+    advertise (roshome </> "events/button") $ Topic.mergeList [robotButtonTrigger0,robotButtonTrigger1,robotButtonTrigger2]
 
 writeRobotBumpers :: RobotState -> Node ()
 writeRobotBumpers st = do
-    let robotBumperTriggerL = repeatM $ atomically $ do
+    let robotBumperTriggerL = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotBumperL st)
             return $ BumperEvent bumper_LEFT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
-    let robotBumperTriggerC = repeatM $ atomically $ do
+    let robotBumperTriggerC = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotBumperC st)
             return $ BumperEvent bumper_CENTER (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
-    let robotBumperTriggerR = repeatM $ atomically $ do
+    let robotBumperTriggerR = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotBumperR st)
             return $ BumperEvent bumper_RIGHT (if b then BumperEvent.state_PRESSED else BumperEvent.state_RELEASED)
-    advertise (roshome </> "events/bumper") $ Topic.mergeList
-        [robotBumperTriggerL,robotBumperTriggerC,robotBumperTriggerR]
+    advertise (roshome </> "events/bumper") $ Topic.mergeList [robotBumperTriggerL,robotBumperTriggerC,robotBumperTriggerR]
 
 writeRobotCliffs :: RobotState -> Node ()
 writeRobotCliffs st = do
-    let robotCliffTriggerL = repeatM $ atomically $ do
+    let robotCliffTriggerL = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotCliffL st)
             return $ CliffEvent CliffEvent.sensor_LEFT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
-    let robotCliffTriggerC = repeatM $ atomically $ do
+    let robotCliffTriggerC = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotCliffC st)
             return $ CliffEvent CliffEvent.sensor_CENTER (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
-    let robotCliffTriggerR = repeatM $ atomically $ do
+    let robotCliffTriggerR = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotCliffR st)
             return $ CliffEvent CliffEvent.sensor_RIGHT (if b then CliffEvent.state_CLIFF else CliffEvent.state_FLOOR) 1
-    advertise (roshome </> "events/cliff") $ Topic.mergeList
-        [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
+    advertise (roshome </> "events/cliff") $ Topic.mergeList [robotCliffTriggerL,robotCliffTriggerC,robotCliffTriggerR]
 
 writeRobotWheels :: RobotState -> Node ()
 writeRobotWheels st = do
-    let robotWheelTriggerL = repeatM $ atomically $ do
+    let robotWheelTriggerL = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotWheelL st)
             return $ WheelDropEvent WheelDropEvent.wheel_LEFT (if b then WheelDropEvent.state_DROPPED else WheelDropEvent.state_RAISED)
-    let robotWheelTriggerR = repeatM $ atomically $ do
+    let robotWheelTriggerR = repeatM $ liftIO $ atomically $ do
             b <- takeTMVar (_eventTrigger $ _robotWheelR st)
             return $ WheelDropEvent WheelDropEvent.wheel_RIGHT (if b then WheelDropEvent.state_DROPPED else WheelDropEvent.state_RAISED)
-    advertise (roshome </> "events/wheel_drop") $ Topic.mergeList
-        [robotWheelTriggerL,robotWheelTriggerR]
+    advertise (roshome </> "events/wheel_drop") $ Topic.mergeList [robotWheelTriggerL,robotWheelTriggerR]
 
 writeRobotState :: Node ()
 writeRobotState = do
     advertise (roshome </> "events/robot_state") $ Topic $ do
-        threadDelay $ 10^6
+        liftIO $ threadDelay $ 10^6
         return (RobotStateEvent RobotStateEvent.state_ONLINE,haltTopic)
 
-runRobotNodes :: WorldState -> Node [ThreadId]
+runRobotNodes :: WorldState -> Node ()
 runRobotNodes w = do
     let st = _worldStateRobot w
     t0 <- readRobotSound st
@@ -407,7 +407,8 @@ runRobotNodes w = do
     writeRobotCliffs st
     writeRobotWheels st
     writeRobotState
-    return [t0,t1,t2,t3,t4]
+    let ts = [t0,t1,t2,t3,t4]
+    addCleanup $ P.mapM_ killThread ts
     
 -- m/s2
 robotMaxLinearAccel :: Double

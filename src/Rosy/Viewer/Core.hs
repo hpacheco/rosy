@@ -217,6 +217,7 @@ changeVel k w = atomically $ do
         KeyDown  -> over (Controller.velocityLinearLens) (\x -> x-0.5)   
         KeyLeft  -> over (Controller.velocityAngularLens) (\x -> x+0.33) 
         KeyRight -> over (Controller.velocityAngularLens) (\x -> x-0.33) 
+        _        -> id
 
 timeIO :: Float -> WorldState -> IO WorldState
 timeIO t w = return w
@@ -228,8 +229,11 @@ writeViewerVelocity w = do
         if (v==D.def)
             then return Nothing
             else return $ Just $ Controller.velocityToROS v
-    let viewerVelocityTrigger = fmap fromJust $ Topic.filter isJust $ Topic.repeatM go
+    let viewerVelocityTrigger = fmap fromJust $ Topic.filter isJust $ Topic.repeatM (liftTIO go)
     advertise (roshome </> "commands/velocity") $ viewerVelocityTrigger
+ where
+    liftTIO :: IO a -> TIO a
+    liftTIO = liftIO
     
 runViewerNodes :: WorldState -> Node ()
 runViewerNodes w = do
