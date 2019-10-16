@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeSynonymInstances, ViewPatterns, PatternSynonyms #-}
 
 module Rosy.Controller.Time
-    ( Seconds(..), Time(..), pattern Seconds, pattern Clock
+    ( Seconds(..), Time(..), pattern Seconds, pattern Clock, Clock(..)
     , doubleToSeconds
     , hours, minutes, seconds, milliseconds
     ) where
@@ -21,6 +21,8 @@ import Control.Monad
 
 doubleToSeconds :: Double -> Seconds
 doubleToSeconds = realToFrac
+
+type Clock = UTCTime
 
 -- | The current time in hours, minutes, seconds and milliseconds.
 pattern Clock :: Int -> Int -> Int -> Int -> UTCTime

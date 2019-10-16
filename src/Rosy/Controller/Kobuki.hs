@@ -6,6 +6,7 @@
 module Rosy.Controller.Kobuki where
 
 import Data.Word as Word
+import Data.Fixed
 import Data.Typeable
 import qualified GHC.Generics as G
 import qualified Data.Default.Generics as D
@@ -146,6 +147,12 @@ instance D.Default Position
 pointToPosition :: Point -> Position
 pointToPosition p = Position (Point._x p) (Point._y p)
 
+vecToPosition :: (Double,Double) -> Position
+vecToPosition (x,y) = Position x y
+
+positionToVec :: Position -> (Double,Double)
+positionToVec (Position x y) = (x,y)
+
 instance Subscribed Position where
     subscribed = subscribedROS $ do
         odom <- subscribe "odom" -- >>= accelerate defaultRate
@@ -163,6 +170,9 @@ instance D.Default Orientation
 
 deriving instance Num Orientation
 deriving instance Fractional Orientation
+deriving instance Floating Orientation
+deriving instance Real Orientation
+deriving instance RealFrac Orientation
     
 
 orientationFromROS :: Quaternion -> Orientation
@@ -189,14 +199,32 @@ instance Subscribed Orientation where
         odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) odom
     
--- an angle in degrees    
+-- | An angle in degrees.
 type Degrees = Double
+
+-- | A distance in centimeters.  
+type Centimeters = Double
+
+-- | A distance in meters (Kobuki's default measure).  
+type Meters = Double
+
+centimetersToMeters :: Centimeters -> Meters
+centimetersToMeters cm = cm/100
+
+metersToCentimeters :: Meters -> Centimeters
+metersToCentimeters m = m * 100
 
 degreesToOrientation :: Degrees -> Orientation
 degreesToOrientation = Orientation . degreesToRadians
 
 orientationToDegrees :: Orientation -> Degrees
 orientationToDegrees = radiansToDegrees . Rosy.Controller.Kobuki.orientation
+
+-- | Normalizes an angle in radians to a positive or negative value between '0' and 'pi' radians.
+normOrientation :: Orientation -> Orientation
+normOrientation o = norm2 $ mod' o (Orientation $ 2 * pi)
+    where
+    norm2 a = if a >= pi then 2 * pi - a else a
         
 instance Subscribed Velocity where
     subscribed = subscribedROS $ do

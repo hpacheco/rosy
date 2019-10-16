@@ -50,8 +50,14 @@ angleVec (x, y) = atan2 y x
 scalarVec :: Floating a => a -> a -> (a,a)
 scalarVec magnitude angle = (magnitude * cos angle,magnitude * sin angle)
 
+distVec :: Floating a => (a,a) -> (a,a) -> a
+distVec p1 p2 = abs $ magnitudeVec $ subVec p1 p2
+
 addVec :: Floating a => (a,a) -> (a,a) -> (a,a)
 addVec (x1,y1) (x2,y2) = (x1+x2,y1+y2)
+
+extVec :: RealFloat a => (a,a) -> a -> (a,a)
+extVec p m = scalarVec (magnitudeVec p + m) (angleVec p)
 
 negVec :: Floating a => (a,a) -> (a,a)
 negVec (x,y) = (-x,-y)

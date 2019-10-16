@@ -68,7 +68,7 @@ module Rosy
     , BumperCenter(..)
     , BumperRight(..)
     , BumperStatus(..)
-    , Bumper(..)
+    , Bumper(..), BumperSide(..)
     --
     -- *** Cliff sensors
     
@@ -78,7 +78,7 @@ module Rosy
     , CliffCenter(..)
     , CliffRight(..)
     , CliffStatus(..)
-    , Cliff(..)
+    , Cliff(..), CliffSide(..)
     --
     -- *** Wheels
     --
@@ -87,7 +87,7 @@ module Rosy
     , WheelLeft(..)
     , WheelRight(..)
     , WheelStatus(..)
-    , Wheel(..)
+    , Wheel(..), WheelSide(..)
     --
     -- *** Periodic inputs
     --
@@ -175,15 +175,13 @@ module Rosy
     --
     -- * Utilities
     -- ** Geometry functions.
-    , radiansToDegrees
-    , degreesToRadians
     , Degrees(..)
-    , degreesToOrientation
-    , orientationToDegrees
+    , degreesToOrientation, orientationToDegrees, normOrientation
+    , Centimeters(..), Meters(..)
+    , centimetersToMeters, metersToCentimeters
+    , vecToPosition, positionToVec
+    , module Rosy.Util
     -- ** General-purpose functions.
-    , floorFloating
-    , roundFloating
-    , ceilingFloating
     , module Prelude
     , module System.Random
     , module Data.Time.Clock

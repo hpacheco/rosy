@@ -88,7 +88,7 @@ isDefaultName :: Name l -> Bool
 isDefaultName (Ident _ "Default") = True
 isDefaultName _ = False
 
-moduleDatas :: Module SrcSpanInfo -> [Doc]
+moduleDatas :: Module SrcSpanInfo -> [(Doc,Doc,[Doc])]
 moduleDatas (Module _ _ _ _ decls) = concatMap declDatas decls
 moduleDatas _ = []
 
@@ -96,28 +96,56 @@ moduleDefaults :: Module SrcSpanInfo -> [Doc]
 moduleDefaults (Module _ _ _ _ decls) = concatMap declDefaults decls
 moduleDefaults _ = []
 
-declDatas :: Decl SrcSpanInfo -> [Doc]
-declDatas (DataDecl _ _ _ h _ _) = [prettyDoc h]
+declDatas :: Decl SrcSpanInfo -> [(Doc,Doc,[Doc])]
+declDatas (DataDecl _ _ _ h _ _) = [(prettyDoc h,declHeadName h,declHeadVars h)]
 declDatas _ = []
 
-appendInstances :: FilePath -> [Doc] -> [Doc] -> IO ()
+declHeadName :: DeclHead SrcSpanInfo -> Doc
+declHeadName (DHead _ n) = prettyDoc n
+declHeadName (DHInfix _ v n) = prettyDoc n
+declHeadName (DHParen _ d) = declHeadName d
+declHeadName (DHApp _ d v) = declHeadName d
+
+declHeadVars :: DeclHead SrcSpanInfo -> [Doc]
+declHeadVars (DHead _ _) = []
+declHeadVars (DHInfix _ v _) = [prettyDoc v]
+declHeadVars (DHParen _ d) = declHeadVars d
+declHeadVars (DHApp _ d v) = prettyDoc v : declHeadVars d
+
+appendInstances :: FilePath -> [(Doc,Doc,[Doc])] -> [Doc] -> IO ()
 appendInstances fp datas defs = do
     let code = generateInstances defs datas
     appendFile fp (show code)
 
-generateInstances :: [Doc] -> [Doc] -> Doc
+generateInstances :: [Doc] -> [(Doc,Doc,[Doc])] -> Doc
 generateInstances defs = foldr (\d code -> generateDataInstances defs d $+$ code) mempty 
 
-generateDataInstances :: [Doc] -> Doc -> Doc
-generateDataInstances defs name
+generateInstCtx :: Doc -> [Doc] -> Doc
+generateInstCtx n xs = parens $ sepBy (text ",") (map (n <+>) xs)
+
+sepBy :: Doc -> [Doc] -> Doc
+sepBy s [] = empty
+sepBy s [x] = x
+sepBy s (x:xs) = x <> s <> sepBy s xs
+
+generateDataInstances :: [Doc] -> (Doc,Doc,[Doc]) -> Doc
+generateDataInstances defs (name,hname,vars)
     =   text "\n"
-    $+$ text "deriving instance Typeable" <+> name
-    $+$ text "deriving instance Generic" <+> name
-    $+$ (if List.elem name defs then text "" else text "instance {-# OVERLAPPABLE #-} Default" <+> name)
-    $+$ (text "instance Subscribed" <+> name <+> text "where"
+    $+$ text "deriving instance Typeable" <+> hname
+    $+$ text "deriving instance Generic" <+> parens name
+    $+$ (if null vars then text "" else text "deriving instance Generic1" <+> hname)
+    $+$ (if List.elem name defs
+            then text ""
+            else text "instance {-# OVERLAPPABLE #-} " <+> defCtx <+> text " => Default" <+> parens name)
+    $+$ (text "instance " <+> subCtx <+> text " => Subscribed" <+> parens name <+> text "where"
         $+$ nest 5 (text "subscribed = subscribedEvent"))
-    $+$ (text "instance Published" <+> name <+> text "where"
+    $+$ (text "instance " <+> pubCtx <+> text " => Published" <+> parens name <+> text "where"
         $+$ nest 5 (text "published = publishedEvent"))
+ where
+   defCtx = generateInstCtx (text "Default") vars
+   typCtx = generateInstCtx (text "Typeable") vars
+   subCtx = parens $ typCtx <> text "," <> generateInstCtx (text "Subscribed") vars
+   pubCtx = parens $ typCtx <> text "," <> generateInstCtx (text "Published") vars
     
     
 
