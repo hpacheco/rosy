@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving #-}
 
 module Rosy.Controller.Kobuki where
 
@@ -13,6 +13,7 @@ import Lens.Family.TH (makeLensesBy)
 import Lens.Family (view, set)
 
 import Rosy.Controller.Core
+import Rosy.Util
 
 import Ros.Node
 import Ros.Topic as Topic
@@ -151,7 +152,7 @@ instance Subscribed Position where
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
         
 -- | The orientation of the robot.
-data Orientation = Orientation
+newtype Orientation = Orientation
     { -- | Orientation of the robot as an angle relative to the horizontal X axis (radians).
       orientation :: Double
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -159,6 +160,10 @@ data Orientation = Orientation
 $(makeLensesBy (Just . (++"Lens")) ''Orientation)
 
 instance D.Default Orientation
+
+deriving instance Num Orientation
+deriving instance Fractional Orientation
+    
 
 orientationFromROS :: Quaternion -> Orientation
 orientationFromROS (Quaternion x y z w) = Orientation $ (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
@@ -183,6 +188,15 @@ instance Subscribed Orientation where
     subscribed = subscribedROS $ do
         odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) odom
+    
+-- an angle in degrees    
+type Degrees = Double
+
+degreesToOrientation :: Degrees -> Orientation
+degreesToOrientation = Orientation . degreesToRadians
+
+orientationToDegrees :: Orientation -> Degrees
+orientationToDegrees = radiansToDegrees . Rosy.Controller.Kobuki.orientation
         
 instance Subscribed Velocity where
     subscribed = subscribedROS $ do

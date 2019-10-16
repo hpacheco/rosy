@@ -7,7 +7,7 @@ module Rosy
     ( 
     -- $intro
     -- * Robot programming
-      simulate, simulateIn, world1, world2, world3
+      simulate, simulateIn, world1, world2, world3, world4
     -- * Robot controllers
     --
     {-| A robot 'Controller' is a function:
@@ -160,10 +160,26 @@ module Rosy
     -- | A type declarating for processing global memory.
     ,Memory(..)
     --
+    -- * Tasks
+    --
+    -- ** Run tasks
+    --
+    , simulateTask, simulateTaskIn
+    --
+    -- | A robot task
+    --
+    , Task(..), Done(..)
+    --
+    -- | Create a new task
+    , task, task'
+    --
     -- * Utilities
     -- ** Geometry functions.
     , radiansToDegrees
     , degreesToRadians
+    , Degrees(..)
+    , degreesToOrientation
+    , orientationToDegrees
     -- ** General-purpose functions.
     , floorFloating
     , roundFloating
