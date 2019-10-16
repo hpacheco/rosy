@@ -27,13 +27,13 @@ Library
                        Paths_rosy
 
   Build-depends:       base >= 4.5 && < 6,
-                       uuid, random, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, process, safe,
+                       uuid, random, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, safe,
                        ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, roshask, thread-hierarchy
   if impl(ghcjs)
     Build-depends:
                        codeworld-api-gloss
   else
-    Build-depends:     gloss
+    Build-depends:     gloss, process
 
   GHC-Options:         -Wall
   Hs-Source-Dirs:      src

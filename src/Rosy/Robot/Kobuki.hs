@@ -36,7 +36,6 @@ import Data.Word as Word
 import Data.Default.Generics as D
 import GHC.Generics as G
 import GHC.Conc
-import System.Process
 import Safe
 import Prelude as P
 import Data.Maybe as Maybe
@@ -50,6 +49,12 @@ import Graphics.Gloss.Interface.Environment
 import Control.Exception
 
 import Paths_rosy
+
+#if defined(ghcjs_HOST_OS)
+#else
+import System.Process
+#endif
+    
 
 -- ** Robot inputs
 
