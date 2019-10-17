@@ -41,7 +41,9 @@ preprocessor name from to = catch (runPreprocessor name from to) $ \(PreProcesso
 
 runPreprocessor :: String -> FilePath -> FilePath -> IO ()
 runPreprocessor name from to = do
-    copyFile from to
+    txt <- readFile from
+    let txt' = "{-# LANGUAGE ConstraintKinds #-}" ++ "\n" ++ txt
+    writeFile to txt'
     fromhs <- parseFile name from
     appendInstances to (moduleDatas fromhs) (moduleDefaults fromhs)
 
