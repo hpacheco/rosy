@@ -33,8 +33,8 @@ import System.IO.Unsafe
 control :: Controller a => a -> IO ()
 control n = runNode "rosy-simulator" (runUserNode $ controller n)
 
-controlTask :: Task end -> IO ()
-controlTask t = runNode "rosy-simulator" (runTask t)
+--controlTask :: Task end -> IO ()
+--controlTask t = runNode "rosy-simulator" (runTask t)
 
 startNode :: Node () -> WorldState -> IO ()
 startNode n w = runNode "rosy-simulator" $ do
@@ -47,8 +47,8 @@ startNode n w = runNode "rosy-simulator" $ do
 simulate :: Controller a => a -> IO ()
 simulate = simulateIn world1
 
-simulateTask :: Task end -> IO ()
-simulateTask = simulateTaskIn world1
+--simulateTask :: Task end -> IO ()
+--simulateTask = simulateTaskIn world1
 
 -- | The main function that produces a Rosy program.
 -- It receives a robot 'Controller' that does the actual job of interacting with your robot.
@@ -56,8 +56,8 @@ simulateTask = simulateTaskIn world1
 simulateIn :: Controller a => World -> a -> IO ()
 simulateIn w n = simulateNode w $ runUserNode $ controller n
 
-simulateTaskIn :: World -> Task end -> IO ()
-simulateTaskIn w n = simulateNode w $ runTask n >> return ()
+--simulateTaskIn :: World -> Task end -> IO ()
+--simulateTaskIn w n = simulateNode w $ runTask n >> return ()
 
 simulateNode :: World -> Node () -> IO ()
 simulateNode world n = do
@@ -67,6 +67,9 @@ simulateNode world n = do
 -- | A monad for performing multiple robot tasks, returning a final event
 newtype Task end = Task { runTask :: Node end }
     deriving (Applicative,Functor,Monad)
+
+instance Controller (Task end) where
+    controller t = lift $ runTask t >> return ()
 
 --data TaskState = TaskState
 --    { taskSubscriptions :: MVar (Map TypeRep TaskSubscription)

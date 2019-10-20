@@ -162,10 +162,6 @@ module Rosy
     --
     -- * Tasks
     --
-    -- ** Run tasks
-    --
-    , simulateTask, simulateTaskIn
-    --
     -- | A robot task
     --
     , Task(..), Done(..)
