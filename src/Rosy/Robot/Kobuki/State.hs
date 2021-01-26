@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, TemplateHaskell #-}
 
-module Rosy.Robot.State where
+module Rosy.Robot.Kobuki.State where
 
 import qualified Rosy.Controller.Kobuki as Controller
 

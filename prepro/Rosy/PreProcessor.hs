@@ -6,7 +6,7 @@ import System.Directory
 import System.IO
 import System.Exit
 
-import Language.Haskell.Exts (readExtensions)
+import Language.Haskell.Exts (readExtensions,KnownExtension(..),Extension(..))
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Exts.Syntax
 import Language.Haskell.Exts.Pretty
@@ -42,9 +42,15 @@ preprocessor name from to = catch (runPreprocessor name from to) $ \(PreProcesso
 runPreprocessor :: String -> FilePath -> FilePath -> IO ()
 runPreprocessor name from to = do
     txt <- readFile from
-    let txt' = "{-# LANGUAGE ConstraintKinds #-}" ++ "\n" ++ txt
-    writeFile to txt'
+    let pragmas =
+            "{-# LANGUAGE ConstraintKinds, RebindableSyntax, PartialTypeSignatures, DataKinds, TypeFamilies, MultiParamTypeClasses, UndecidableInstances, FlexibleInstances #-}\n"++
+            "{-# OPTIONS_GHC -fplugin=Type.Compare.Plugin #-}\n"
     fromhs <- parseFile name from
+    let (header,decls) = moduleSplit fromhs
+    writeFile to pragmas
+    appendFile to header
+    appendFile to "import Prelude\n"
+    appendFile to decls
     appendInstances to (moduleDatas fromhs) (moduleDefaults fromhs)
 
 parseFile :: String -> FilePath -> IO (Module SrcSpanInfo)
@@ -53,7 +59,7 @@ parseFile name fp = do
     let mb = readExtensions str
     let mblang = join $ fmap fst mb
     let exts = maybe [] snd mb
-    let mode' = defaultParseMode { extensions = exts }
+    let mode' = defaultParseMode { extensions = EnableExtension DataKinds : exts }
     let mode'' = case mblang of { Nothing -> mode'; Just lang -> mode' {baseLanguage = lang } }
     let res = parseWithMode mode'' str
     case res of
@@ -94,6 +100,9 @@ moduleDatas :: Module SrcSpanInfo -> [(Doc,Doc,[Doc])]
 moduleDatas (Module _ _ _ _ decls) = concatMap declDatas decls
 moduleDatas _ = []
 
+moduleSplit :: Module SrcSpanInfo -> (String,String)
+moduleSplit (Module l h ps is ds) = (prettyPrint (Module l h ps is []),unlines $ map prettyPrint ds)
+
 moduleDefaults :: Module SrcSpanInfo -> [Doc]
 moduleDefaults (Module _ _ _ _ decls) = concatMap declDefaults decls
 moduleDefaults _ = []
@@ -117,7 +126,9 @@ declHeadVars (DHApp _ d v) = prettyDoc v : declHeadVars d
 appendInstances :: FilePath -> [(Doc,Doc,[Doc])] -> [Doc] -> IO ()
 appendInstances fp datas defs = do
     let code = generateInstances defs datas
-    appendFile fp (show code)
+    let ifthenelse = text "ifThenElse True x y = x"
+                 $+$ text "ifThenElse False x y = y"
+    appendFile fp (show $ code $+$ ifthenelse)
 
 generateInstances :: [Doc] -> [(Doc,Doc,[Doc])] -> Doc
 generateInstances defs = foldr (\d code -> generateDataInstances defs d $+$ code) mempty 

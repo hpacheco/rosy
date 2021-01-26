@@ -1,10 +1,11 @@
 {-# LANGUAGE ScopedTypeVariables, ViewPatterns #-}
 
-module Rosy.Viewer.Core where
+module Rosy.Viewer.Kobuki.Core where
 
-import Rosy.Robot.State
-import Rosy.Robot.Kobuki
-import Rosy.Viewer.State
+import Rosy.Robot.Kobuki.State
+import Rosy.Robot.Kobuki.Core
+import Rosy.Viewer.Kobuki.State
+import qualified Rosy.Controller.Core as Controller
 import qualified Rosy.Controller.Kobuki as Controller
 import Rosy.Controller.Core
 import Rosy.Util

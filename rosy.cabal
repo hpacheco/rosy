@@ -11,29 +11,36 @@ Build-type:          Simple
 Tested-with:         GHC >= 7.6
 Description:         Simplified ROS bindings, powered by the roshask library.
 
-Data-files: sounds/*.wav
+Data-files: sounds/*.wav images/*.png
 
 Library
   Exposed-modules:     Rosy.Controller.Core
                        Rosy.Controller.Kobuki
+                       Rosy.Controller.Turtlesim
                        Rosy.Controller.Time
-                       Rosy.Robot.Kobuki
-                       Rosy.Robot.State
-                       Rosy.Viewer.Core
-                       Rosy.Viewer.State
+                       Rosy.Robot.Kobuki.Core
+                       Rosy.Robot.Kobuki.State
+                       Rosy.Viewer.Kobuki.Core
+                       Rosy.Viewer.Kobuki.State
+                       Rosy.Robot.Turtlesim.Core
+                       Rosy.Robot.Turtlesim.State
+                       Rosy.Viewer.Turtlesim.Core
+                       Rosy.Viewer.Turtlesim.State
                        Rosy.Interface
+                       Rosy.Interface.Task
+                       Rosy.Interface.Task.Types
                        Rosy.Util
                        Rosy
                        Paths_rosy
 
   Build-depends:       base >= 4.5 && < 6,
-                       uuid, random, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, safe,
-                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, roshask, thread-hierarchy
+                       uuid, random, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, safe, dlist,
+                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, ROS-turtlesim-msgs, ROS-std-srvs-msgs, roshask, thread-hierarchy, type-level-sets, cmptype, effect-monad
   if impl(ghcjs)
     Build-depends:
                        codeworld-api-gloss
   else
-    Build-depends:     gloss, process
+    Build-depends:     gloss, gloss-juicy, process
 
   GHC-Options:         -Wall
   Hs-Source-Dirs:      src

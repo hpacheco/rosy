@@ -1,10 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables, TupleSections, UndecidableInstances, GeneralizedNewtypeDeriving, FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables, TupleSections, UndecidableInstances, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
 
 module Rosy.Interface where
 
 import Control.Concurrent.Async
 import Control.Concurrent.Chan
 import Control.Concurrent
+import Control.Exception
 import Control.Concurrent.STM
 import Control.Concurrent.Hierarchy
 import Control.Monad
@@ -18,159 +19,63 @@ import qualified Data.Map as Map
 import Graphics.Gloss
 
 import Ros.Node
-import Rosy.Robot.State
-import Rosy.Viewer.State
 import Rosy.Controller.Core
-import Rosy.Robot.Kobuki
-import Rosy.Viewer.Core
+import Rosy.Robot.Kobuki.State as Kobuki
+import Rosy.Viewer.Kobuki.State as Kobuki
+import Rosy.Robot.Kobuki.Core as Kobuki
+import Rosy.Viewer.Kobuki.Core as Kobuki
+import Rosy.Robot.Turtlesim.State as Turtle
+import Rosy.Viewer.Turtlesim.State as Turtle
+import Rosy.Robot.Turtlesim.Core as Turtle
+import Rosy.Viewer.Turtlesim.Core as Turtle
 
 import Ros.Topic.Util as Topic
 import Ros.Topic as Topic
 
 import Unsafe.Coerce
 import System.IO.Unsafe
+import GHC.Conc
 
-control :: Controller a => a -> IO ()
-control n = runNode "rosy-simulator" (runUserNode $ controller n)
+control :: Runnable a => a -> IO ()
+control n = runNode "rosy-simulator" (run n)
 
---controlTask :: Task end -> IO ()
---controlTask t = runNode "rosy-simulator" (runTask t)
-
-startNode :: Node () -> WorldState -> IO ()
-startNode n w = runNode "rosy-simulator" $ do
-    runViewerNodes w
-    runRobotNodes w
+-- | Launches simulated kobuki viewer and robot nodes alongside the controller node
+startKobuki :: Node () -> Kobuki.WorldState -> IO ()
+startKobuki n w = runNode "rosy-simulator" $ do
+    Kobuki.runViewerNodes w
+    Kobuki.runRobotNodes w
+    n
+    
+-- | Launches simulated turtlesim viewer and robot nodes alongside the controller node
+startTurtle :: Node () -> Turtle.WorldState -> IO ()
+startTurtle n w = runNode "rosy-simulator" $ do
+    Turtle.runViewerNodes w
+    Turtle.runRobotNodes w
     n
 
+-- | The kinds of simulated robots.
+data Robot
+    -- | A Kobuki robot, simulated in a given world
+    = Kobuki { kobukiWorld :: Maybe World }
+    -- | A Turtlesim robot
+    | Turtlesim
+
 -- | The main function that produces a Rosy program.
--- It receives a robot 'Controller' that does the actual job of interacting with your robot.
-simulate :: Controller a => a -> IO ()
-simulate = simulateIn world1
+-- It receives a 'Runnable' robot controller that does the actual job of interacting with your robot.
+-- It also receives the kind of 'Robot' that you want to control.
+simulate :: Runnable a => Robot -> a -> IO ()
+simulate (Kobuki w) n = simulateKobuki (maybe world1 id w) $ run n
+simulate (Turtlesim) n = simulateTurtle $ run n
 
---simulateTask :: Task end -> IO ()
---simulateTask = simulateTaskIn world1
-
--- | The main function that produces a Rosy program.
--- It receives a robot 'Controller' that does the actual job of interacting with your robot.
--- It also receives a world in which the robot navigates.
-simulateIn :: Controller a => World -> a -> IO ()
-simulateIn w n = simulateNode w $ runUserNode $ controller n
-
---simulateTaskIn :: World -> Task end -> IO ()
---simulateTaskIn w n = simulateNode w $ runTask n >> return ()
-
-simulateNode :: World -> Node () -> IO ()
-simulateNode world n = do
-    w <- newWorldState world
-    concurrently_ (startNode n w) (runViewer w)
-
--- | A monad for performing multiple robot tasks, returning a final event
-newtype Task end = Task { runTask :: Node end }
-    deriving (Applicative,Functor,Monad)
-
-instance Controller (Task end) where
-    controller t = lift $ runTask t >> return ()
-
---data TaskState = TaskState
---    { taskSubscriptions :: MVar (Map TypeRep TaskSubscription)
---    , taskCleanup :: MVar (IO ())
---    } deriving (Typeable, G.Generic)
---
---data TaskSubscription = TaskSubscription
---    { taskSubscriptionChan :: TChan () -- channel that buffers received messages
---    , taskSubscriptionTopic :: Topic TIO () -- shared topic that reads from channel since start of subscription
---    }
-
---getTaskSubscription :: TypeRep -> Task TaskSubscription
---getTaskSubscription ty = do
---    (e,tid) <- getTaskSubscription' ty
---    lift $ mapM_ (addTaskCleanup . killThread) tid
---    return e
---
---getTaskSubscription' :: TypeRep -> Task (TaskSubscription,Maybe ThreadId)
---getTaskSubscription' ty = do
---    v <- asks taskSubscriptions
---    ts <- lift2 $ getThreads
---    liftIO $ modifyMVar v $ \events -> do
---        case Map.lookup ty events of
---            Just e -> return (events,(e,Nothing))
---            Nothing -> do
---                c <- newTChanIO
---                let stream = Topic $ do { x <- liftIO (atomically (readTChan c)); return (x, stream) }
---                (stream',tid) <- runReaderT (Topic.shareUnsafe stream) ts
---                let e = TaskSubscription c stream'
---                return (Map.insert ty e events,(e,Just tid))
---
---instance Subscribed UserNode a => Subscribed Task a where
---    subscribed = subscribedTaskType undefined
-
---subscribedTaskType :: Subscribed UserNode a => a -> Task (Topic TIO (STM a))
---subscribedTaskType ty = Task $ do
---    sub <- getTaskSubscription (typeOf ty)
---    topic <- lift $ subscribed
---    let feed t = do
---        (a,t') <- runTopic t
---        liftIO $ atomically $ writeTChan (taskSubscriptionChan sub) a
---        feed t'
---    nodeTIO $ forkTIO $ feed topic
---    return $ taskSubscriptionTopic sub
---        
---instance Published UserNode a => Published Task a where
---    published t = lift $ published t    
-
---runTask :: Task end -> Node end
---runTask (Task m) st = do
---    subs <- liftIO $ newMVar Map.empty
---    cleanup <- liftIO $ newMVar (return ())
---    end <- runReaderT m subs
---    liftIO $ readMVar cleanup >>= id
---    return end
+simulateKobuki :: World -> Node () -> IO ()
+simulateKobuki world n = do
+    w <- Kobuki.newWorldState world
+    concurrently_ (startKobuki n w) (Kobuki.runViewer w)
     
---both :: Task a -> Task b -> Task (a,b)
---both ta tb = Task $ do
---    s <- ask >>= readMVar
---    (sa,sb) <- liftIO $ forkTaskSubscriptions s
---    a <- runTaskWith ta sa
---    b <- runTaskWith tb sb
---    return (a,b)
+simulateTurtle :: Node () -> IO ()
+simulateTurtle n = do
+    w <- Turtle.newWorldState
+    concurrently_ (startTurtle n w) (Turtle.runViewer w)
 
-data Done end = Done end
-  deriving (Show,Eq,Ord,Typeable)
-instance Typeable end => Subscribed (Done end) where
-    subscribed = subscribedEvent
-instance Typeable end => Published (Done end) where
-    published = publishedEvent
 
--- | A task that runs a controller until it emits a @Done@ event, with a return value of type @end@.
-task' :: (Typeable end,Controller action) => action -> Task end
-task' action = Task $ do
-    v <- liftIO $ newEmptyTMVarIO
-    children <- forkNode $ do
-        endTopic <- runUserNode $ do
-            controller action
-            subscribed
-        _ <- runHandler (\stm -> liftTIO $ atomically $ stm >>= putTMVar v) endTopic
-        return ()
-    Done end <- liftIO $ atomically $ takeTMVar v
-    liftIO $ killThreadHierarchy children
-    return end
     
--- | A 'task', with an initialization step.
-task :: (Typeable end,Published init,Controller action) => init -> action -> Task end 
-task init action = Task $ do
-    initialized <- liftIO $ newEmptyTMVarIO
-    done <- liftIO $ newEmptyTMVarIO
-    children <- forkNode $ do
-        endTopic <- runUserNode $ do
-            published (singleTopic $ return $ Just $ init) >>= lift . runHandler (\stm -> liftTIO $ atomically $ stm >>= putTMVar initialized)
-            liftIO $ atomically $ takeTMVar initialized
-            controller action
-            subscribed
-        _ <- runHandler (\stm -> liftTIO $ atomically $ stm >>= putTMVar done) endTopic
-        return ()
-    Done end <- liftIO $ atomically $ takeTMVar done
-    liftIO $ killThreadHierarchy children
-    return end
-
-
-

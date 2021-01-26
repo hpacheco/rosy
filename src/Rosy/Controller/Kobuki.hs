@@ -55,7 +55,6 @@ soundToROS :: Sound -> Sound.Sound
 soundToROS = Sound.Sound . toEnum . fromEnum
 
 instance Published Sound where
-    --published t = advertise (roshome </> "commands/sound") (fmap soundToROS t)
     published = publishedROS $ advertise (roshome </> "commands/sound") . fmap soundToROS
 
 -- ** Leds
@@ -101,27 +100,6 @@ instance Published Led2 where
 
 -- ** Velocity
 
--- | The velocity of the robot is defined using two parameters.
-data Velocity = Velocity
-    { -- | Linear velocity in the same direction as the robot (m/s)
-      velocityLinear  :: Double
-      -- | Angular velocity in the counter-clockwise direction (radians/s)
-    , velocityAngular :: Double
-    } deriving (Show, Eq, Ord, Typeable, G.Generic)
-
-$(makeLensesBy (Just . (++"Lens")) ''Velocity)
-
-instance D.Default Velocity
-
-addVelocity :: Velocity -> Velocity -> Velocity
-addVelocity (Velocity vx1 az1) (Velocity vx2 az2) = Velocity (vx1+vx2) (az1+az2)
-
-velocityFromROS :: Twist -> Velocity
-velocityFromROS t = Velocity (Vector3._x $ Twist._linear t) (Vector3._z $ Twist._angular t)
-
-velocityToROS :: Velocity -> Twist
-velocityToROS (Velocity vx az) = Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
-
 instance Published Velocity where
     published = publishedROS $ advertise (roshome </> "commands/velocity") . fmap velocityToROS
 
@@ -132,99 +110,15 @@ instance Published Velocity where
 instance Subscribed Odometry where
     subscribed = subscribedROS $ subscribe "odom"
 
--- | The current position of the robot.
-data Position = Position
-    { -- | Coordinate in the horizontal X axis.
-      positionX :: Double
-      -- | Coordinate in the vertical Y axis.
-    , positionY :: Double
-    } deriving (Show, Eq, Ord, Typeable, G.Generic)
-    
-$(makeLensesBy (Just . (++"Lens")) ''Position)
-
-instance D.Default Position
-
-pointToPosition :: Point -> Position
-pointToPosition p = Position (Point._x p) (Point._y p)
-
-vecToPosition :: (Double,Double) -> Position
-vecToPosition (x,y) = Position x y
-
-positionToVec :: Position -> (Double,Double)
-positionToVec (Position x y) = (x,y)
-
 instance Subscribed Position where
     subscribed = subscribedROS $ do
         odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (pointToPosition . Pose._position . PoseWithCovariance._pose . Odometry._pose) odom
-        
--- | The orientation of the robot.
-newtype Orientation = Orientation
-    { -- | Orientation of the robot as an angle relative to the horizontal X axis (radians).
-      orientation :: Double
-    } deriving (Show, Eq, Ord, Typeable, G.Generic)
-    
-$(makeLensesBy (Just . (++"Lens")) ''Orientation)
-
-instance D.Default Orientation
-
-deriving instance Num Orientation
-deriving instance Fractional Orientation
-deriving instance Floating Orientation
-deriving instance Real Orientation
-deriving instance RealFrac Orientation
-    
-
-orientationFromROS :: Quaternion -> Orientation
-orientationFromROS (Quaternion x y z w) = Orientation $ (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
-
-orientationToROS :: Orientation -> Quaternion
-orientationToROS (Orientation yaw) = Quaternion qx qy qz qw
-    where
-    pitch = 0
-    roll = 0
-    cy = cos(yaw * 0.5)
-    sy = sin(yaw * 0.5)
-    cp = cos(pitch * 0.5)
-    sp = sin(pitch * 0.5)
-    cr = cos(roll * 0.5)
-    sr = sin(roll * 0.5)
-    qx = cy * cp * sr - sy * sp * cr
-    qy = sy * cp * sr + cy * sp * cr
-    qz = sy * cp * cr - cy * sp * sr
-    qw = cy * cp * cr + sy * sp * sr
 
 instance Subscribed Orientation where
     subscribed = subscribedROS $ do
         odom <- subscribe "odom" -- >>= accelerate defaultRate
         return $ fmap (orientationFromROS . Pose._orientation . PoseWithCovariance._pose . Odometry._pose) odom
-    
--- | An angle in degrees.
-type Degrees = Double
-
--- | A distance in centimeters.  
-type Centimeters = Double
-
--- | A distance in meters (Kobuki's default measure).  
-type Meters = Double
-
-centimetersToMeters :: Centimeters -> Meters
-centimetersToMeters cm = cm/100
-
-metersToCentimeters :: Meters -> Centimeters
-metersToCentimeters m = m * 100
-
-degreesToOrientation :: Degrees -> Orientation
-degreesToOrientation = Orientation . degreesToRadians
-
-orientationToDegrees :: Orientation -> Degrees
-orientationToDegrees = radiansToDegrees . Rosy.Controller.Kobuki.orientation
-
--- | Normalizes an angle in radians to a positive or negative value between '0' and 'pi' radians.
-normOrientation :: Orientation -> Orientation
-normOrientation o = norm2 $ mod' o (Orientation $ 2 * pi)
-    where
-    norm2 a = if a >= pi then 2 * pi - a else a
         
 instance Subscribed Velocity where
     subscribed = subscribedROS $ do

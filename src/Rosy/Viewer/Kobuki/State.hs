@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP, TemplateHaskell, DeriveGeneric #-}
 
-module Rosy.Viewer.State where
+module Rosy.Viewer.Kobuki.State where
 
-import Rosy.Robot.State
+import Rosy.Robot.Kobuki.State
+import qualified Rosy.Controller.Core as Controller
 import qualified Rosy.Controller.Kobuki as Controller
 
 import Ros.Node

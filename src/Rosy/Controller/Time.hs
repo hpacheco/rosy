@@ -59,7 +59,7 @@ clockFromUTCTime utc = (h,m,s,ms)
     s = remBy 60 $ quotBy 1 diff
     ms = floor $ diff - realToFrac (floor diff) * 1000
 
-instance Subscribed UTCTime where
+instance Subscribed Clock where
     subscribed = return $ Topic.topicRate defaultRate $ Topic.repeatM $ liftM return $ lift getCurrentTime
     
 instance Subscribed Seconds where

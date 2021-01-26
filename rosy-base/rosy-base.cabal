@@ -1,0 +1,19 @@
+Name:                rosy-base
+Version:             0.0.1
+Synopsis:            Replacement base module for Rosy
+License-file:        LICENSE
+Author:              Hugo Pacheco
+Maintainer:          Hugo Pacheco <hpacheco@gmail.com>
+Copyright:           (c) 2019, Hugo Pacheco
+Build-type:          Simple
+Cabal-version:       >=1.8
+
+Description:
+  This module extends base prelude with rosy.
+
+Library
+  Hs-source-dirs:      .
+  Exposed-modules:     Prelude
+  Build-depends:       base, data-default-generics, 
+                       rosy
+  Exposed:             False

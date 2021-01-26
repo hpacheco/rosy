@@ -1,9 +1,10 @@
 {-# LANGUAGE TupleSections, CPP, DeriveGeneric, ScopedTypeVariables, ViewPatterns #-}
 
-module Rosy.Robot.Kobuki where
+module Rosy.Robot.Kobuki.Core where
 
-import Rosy.Robot.State
-import Rosy.Viewer.State
+import Rosy.Robot.Kobuki.State
+import Rosy.Viewer.Kobuki.State
+import qualified Rosy.Controller.Core as Controller
 import qualified Rosy.Controller.Kobuki as Controller
 import Rosy.Controller.Core
 import Rosy.Util

@@ -1,9 +1,11 @@
-{-# LANGUAGE MultiParamTypeClasses, CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances, StandaloneDeriving #-}
 
 module Rosy.Controller.Core where
 
 import Data.UUID.V4 (nextRandom)
 import Data.Maybe
+import Data.Proxy
+import Data.Fixed
 
 import qualified Data.Default.Generics as D
 import Data.Typeable
@@ -29,11 +31,12 @@ import Control.Monad.Trans
 import Control.Monad.IO.Class
 import Control.Monad.State (StateT(..),gets)
 import qualified Control.Monad.State as State
-import Control.Monad.Reader (ReaderT(..),asks)
+import Control.Monad.Reader (ReaderT(..),asks,ask)
 import qualified Control.Monad.Reader as Reader
 import GHC.Conc.Sync hiding (modifyMVar_)
 import Control.Concurrent.STM
 import Control.Concurrent
+import Control.Concurrent.Hierarchy
 
 import Unsafe.Coerce
 import System.IO.Unsafe
@@ -43,6 +46,15 @@ import System.Random
 import Graphics.Gloss.Interface.Environment
 #else
 #endif
+
+import Ros.Geometry_msgs.Point as Point
+import Ros.Geometry_msgs.Pose as Pose
+import Ros.Geometry_msgs.Twist as Twist
+import Ros.Geometry_msgs.PoseWithCovariance as PoseWithCovariance
+import Ros.Geometry_msgs.TwistWithCovariance as TwistWithCovariance
+import Ros.Geometry_msgs.Vector3 as Vector3
+import Ros.Geometry_msgs.Quaternion as Quaternion
+import Ros.Nav_msgs.Odometry as Odometry
 
 liftTIO :: IO a -> TIO a
 liftTIO = liftIO
@@ -172,35 +184,98 @@ data Memory a = Memory a
 instance D.Default a => D.Default (Memory a) where
     def = Memory D.def
 
+-- * User Parameters (global memory)
+
+data Param a = Param a
+  deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+instance D.Default a => D.Default (Param a) where
+    def = Param D.def
+    
+getUserParam :: Typeable a => a -> UserNode (TVar a)
+getUserParam a = asks userParams >>= \v -> liftIO $ modifyMVar v $ \params -> do
+    let ty = typeOf a
+    case Map.lookup ty params of
+        Just v -> return (params,unsafeCoerce v)
+        Nothing -> do
+            v <- newTVarIO a
+            return (Map.insert ty (unsafeCoerce v) params,v)
+
+publishedParam :: (D.Default a,Typeable a) => Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
+publishedParam t = do
+    tv <- getUserParam D.def
+    let write m = do
+            mb <- m
+            case mb of
+                Nothing -> return ()
+                Just a -> writeTVar tv a
+    return $ fmap write t
+
+subscribedParam :: (D.Default a,Typeable a) => UserNode (Topic TIO (STM a))
+subscribedParam = do
+    tv <- getUserParam D.def
+    return $ Topic.topicRate defaultRate $ Topic.repeat $ readTVar tv
+
 -- * Controllers
+
+type UserParam = UserMemory
+type UserParams = MVar (Map TypeRep UserParam)
 
 data UserState = UserState
     { userEvents   :: MVar (Map TypeRep UserEvent)
     , userMemories :: MVar (Map TypeRep UserMemory)
+    , userParams :: UserParams
     } deriving (Typeable, G.Generic)
 type UserNode = ReaderT UserState Node 
 
-newUserState :: IO UserState
-newUserState = do
+forkUserNode :: UserNode () -> UserNode ThreadMap
+forkUserNode n = do
+    r <- ask
+    lift $ forkNode (runReaderT n r)
+    
+forkNewUserNode :: UserNode () -> UserNode ThreadMap
+forkNewUserNode n = do
+    r <- ask
+    r' <- liftIO $ newUserState (userParams r)
+    lift $ forkNode (runReaderT n r')
+
+forkUserNodeIO :: UserNode () -> UserNode ThreadId
+forkUserNodeIO n = do
+    r <- ask
+    lift $ forkNodeIO (runReaderT n r)
+
+newUserState :: UserParams -> IO UserState
+newUserState ps = do
     es <- newUserEvents
     ms <- newUserMemories
-    return $ UserState es ms
+    return $ UserState es ms ps
 
-runUserNode :: UserNode a -> Node a
-runUserNode n = do
-    st <- liftIO newUserState
+runUserNode :: UserParams -> UserNode a -> Node a
+runUserNode ps n = do
+    st <- liftIO $ newUserState ps
     a <- runReaderT n st
     return a
+    
+runNewUserNode :: UserNode a -> Node a
+runNewUserNode n = do
+    ps <- liftIO $ newUserMemories
+    runUserNode ps n
 
 -- | Command the robot to speak some sentence.
 data Say = Say String
   deriving (Show, Eq, Ord, Typeable, G.Generic)
 
-class Subscribed a where
+class Typeable a => Subscribed a where
     subscribed :: UserNode (Topic TIO (STM a))
+    subscribed = subscribedProxy Proxy
+    subscribedProxy :: Proxy a -> UserNode (Topic TIO (STM a))
+    subscribedProxy _ = subscribed
 
 instance (D.Default a,Typeable a) => Subscribed (Memory a) where
     subscribed = subscribedMemory
+    
+instance (D.Default a,Typeable a) => Subscribed (Param a) where
+    subscribed = subscribedParam
 
 subscribedROS :: Node (Topic TIO a) -> UserNode (Topic TIO (STM a))
 subscribedROS n = lift $ subscribedSTM n
@@ -254,13 +329,19 @@ instance Subscribed () where
 instance Subscribed StdGen where
     subscribed = return $ Topic.topicRate defaultRate $ Topic.repeatM $ liftM return $ lift newStdGen
     
-class Published a where
+class Typeable a => Published a where
     -- the output topic preserves the periodicity of the input topic
     -- the output is a topic of transactions that publish each value
     published :: Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
+    published = publishedProxy Proxy
+    publishedProxy :: Proxy a -> Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
+    publishedProxy _ = published
     
 instance (D.Default a,Typeable a) => Published (Memory a) where
     published = publishedMemory
+
+instance (D.Default a,Typeable a) => Published (Param a) where
+    published = publishedParam
     
 -- writes to a transactional buffer, and buffer gets advertised to ROS
 publishedROS :: (Topic TIO a -> Node ()) -> Topic TIO (STM (Maybe a)) -> UserNode (Topic TIO (STM ()))
@@ -281,7 +362,7 @@ mergeT :: Monad m => Topic TIO (m ()) -> Topic TIO (m ()) -> (Topic TIO (m ()))
 mergeT t1 t2 = fmap (uncurry (>>)) $ Topic.bothNew t1 t2
     
 instance Published Say where
-    published = publishedROS $ \t -> runHandler (\(Say str) -> liftIO $ reportMessage str) t >> return ()
+    published = publishedROS $ \t -> runHandler_ (\(Say str) -> liftIO $ reportMessage str) t
 
 instance (Published a,Published b) => Published (a,b) where
     published tab = do
@@ -395,4 +476,143 @@ instance (Controller a,Controller b,Controller c,Controller d,Controller e,Contr
 
 roshome = "/mobile_base"
 
+-- * General types
 
+-- ** Velocity
+
+-- | The velocity of the robot is defined using two parameters.
+data Velocity = Velocity
+    { -- | Linear velocity in the same direction as the robot (m/s)
+      velocityLinear  :: Double
+      -- | Angular velocity in the counter-clockwise direction (radians/s)
+    , velocityAngular :: Double
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+
+$(makeLensesBy (Just . (++"Lens")) ''Velocity)
+
+instance D.Default Velocity
+
+addVelocity :: Velocity -> Velocity -> Velocity
+addVelocity (Velocity vx1 az1) (Velocity vx2 az2) = Velocity (vx1+vx2) (az1+az2)
+
+velocityFromROS :: Twist -> Velocity
+velocityFromROS t = Velocity (Vector3._x $ Twist._linear t) (Vector3._z $ Twist._angular t)
+
+velocityToROS :: Velocity -> Twist
+velocityToROS (Velocity vx az) = Twist (Vector3.Vector3 vx 0 0) (Vector3.Vector3 0 0 az)
+
+-- ** Distance
+
+-- | Measure of linear and angular distance using the @Velocity@ for 1s.
+type Distance = Velocity
+
+-- ** Position
+
+-- | The current position of the robot.
+data Position = Position
+    { -- | Coordinate in the horizontal X axis.
+      positionX :: Double
+      -- | Coordinate in the vertical Y axis.
+    , positionY :: Double
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+    
+$(makeLensesBy (Just . (++"Lens")) ''Position)
+
+instance D.Default Position
+
+pointToPosition :: Point -> Position
+pointToPosition p = Position (Point._x p) (Point._y p)
+
+vecToPosition :: (Double,Double) -> Position
+vecToPosition (x,y) = Position x y
+
+positionToVec :: Position -> (Double,Double)
+positionToVec (Position x y) = (x,y)
+
+-- *+ Orientation
+
+-- | The orientation of the robot.
+newtype Orientation = Orientation
+    { -- | Orientation of the robot as an angle relative to the horizontal X axis (radians).
+      orientation :: Double
+    } deriving (Show, Eq, Ord, Typeable, G.Generic)
+    
+$(makeLensesBy (Just . (++"Lens")) ''Orientation)
+
+instance D.Default Orientation
+
+deriving instance Num Orientation
+deriving instance Fractional Orientation
+deriving instance Floating Orientation
+deriving instance Real Orientation
+deriving instance RealFrac Orientation
+    
+orientationFromROS :: Quaternion -> Orientation
+orientationFromROS (Quaternion x y z w) = Orientation $ (atan2 (2*w*z+2*x*y) (1 - 2*(y*y + z*z)))
+
+orientationToROS :: Orientation -> Quaternion
+orientationToROS (Orientation yaw) = Quaternion qx qy qz qw
+    where
+    pitch = 0
+    roll = 0
+    cy = cos(yaw * 0.5)
+    sy = sin(yaw * 0.5)
+    cp = cos(pitch * 0.5)
+    sp = sin(pitch * 0.5)
+    cr = cos(roll * 0.5)
+    sr = sin(roll * 0.5)
+    qx = cy * cp * sr - sy * sp * cr
+    qy = sy * cp * sr + cy * sp * cr
+    qz = sy * cp * cr - cy * sp * sr
+    qw = cy * cp * cr + sy * sp * sr
+
+-- ** Never
+
+-- | An event that never occurs.
+data Never = Never
+  deriving (Show,Eq,Ord,Typeable)
+instance Subscribed Never where
+    subscribed = return $ haltTopic
+instance Published Never where
+    published t = return $ fmap2 (const ()) t
+
+-- ** Other
+
+-- | An angle in degrees.
+type Degrees = Double
+
+-- | A distance in centimeters.  
+type Centimeters = Double
+
+-- | A distance in meters (Kobuki's default measure).  
+type Meters = Double
+
+centimetersToMeters :: Centimeters -> Meters
+centimetersToMeters cm = cm/100
+
+metersToCentimeters :: Meters -> Centimeters
+metersToCentimeters m = m * 100
+
+degreesToOrientation :: Degrees -> Orientation
+degreesToOrientation = Orientation . degreesToRadians
+
+orientationToDegrees :: Orientation -> Degrees
+orientationToDegrees = radiansToDegrees . Rosy.Controller.Core.orientation
+
+-- | Normalizes an angle in radians to a positive or negative value between '0' and 'pi' radians.
+normOrientation :: Orientation -> Orientation
+normOrientation o = norm2 $ mod' o (Orientation $ 2 * pi)
+    where
+    norm2 a = if a >= pi then 2 * pi - a else a
+    
+-- * Runnable
+
+class Runnable a where
+    run :: a -> Node ()
+    
+instance Runnable (Node a) where
+    run n = n >> return ()
+instance Runnable (UserNode a) where
+    run n = runNewUserNode n >> return ()
+instance {-# OVERLAPPABLE #-} Controller a => Runnable a where
+    run t = run $ controller t
