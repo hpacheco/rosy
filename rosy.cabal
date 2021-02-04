@@ -4,8 +4,8 @@ Synopsis:            Painless bindings for the ROS robotics framework.
 License:             BSD3
 Cabal-version:       >=1.10
 Author:              Hugo Pacheco
-Maintainer:          Hugo Pacheco <hpacheco@di.uminho.pt>
-Copyright:           (c) 2019 Hugo Pacheco
+Maintainer:          Hugo Pacheco <hpacheco@fc.up.pt>
+Copyright:           (c) 2021 Hugo Pacheco
 Category:            Robotics
 Build-type:          Simple
 Tested-with:         GHC >= 7.6

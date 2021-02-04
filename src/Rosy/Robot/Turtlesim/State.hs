@@ -31,7 +31,10 @@ import Lens.Family.TH
 import Lens.Family (over,set)
 import Data.DList as DList
 
+#if defined(ghcjs_HOST_OS)
+#else
 import Graphics.Gloss.Juicy
+#endif
 import Graphics.Gloss.Data.Color
 import Graphics.Gloss.Data.Picture
 
@@ -67,10 +70,19 @@ findInactiveRobot (r:rs) = do
         then return $ Just r
         else findInactiveRobot rs
 
-newRobotState :: (Int,FilePath) -> IO RobotState
-newRobotState (i,pic) = do
+loadTurtle :: String -> IO Picture
+#if defined(ghcjs_HOST_OS)
+loadTurtle str = loadImageById str
+#else
+loadTurtle str = do
     pic' <- getDataFileName $ "images" </> pic
     Just img <- loadJuicyPNG pic'
+    return img
+#endif
+
+newRobotState :: (Int,FilePath) -> IO RobotState
+newRobotState (i,pic) = do
+    img <- loadTurtle pic
     atomically $ do
         vel <- newTVar $ D.def
         pose <- newTVar $ Pose (250/45) (250/45) 0 0 0
