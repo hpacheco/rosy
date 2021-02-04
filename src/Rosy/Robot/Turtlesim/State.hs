@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, TemplateHaskell #-}
+{-# LANGUAGE CPP, DeriveGeneric, TemplateHaskell #-}
 
 module Rosy.Robot.Turtlesim.State where
 
