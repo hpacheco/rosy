@@ -72,7 +72,7 @@ findInactiveRobot (r:rs) = do
 
 loadTurtle :: String -> IO Picture
 #if defined(ghcjs_HOST_OS)
-loadTurtle str = loadImageById str
+loadTurtle str = loadImageById (takeBaseName str)
 #else
 loadTurtle str = do
     pic' <- getDataFileName $ "images" </> pic
