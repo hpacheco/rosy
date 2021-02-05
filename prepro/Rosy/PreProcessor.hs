@@ -43,8 +43,8 @@ runPreprocessor :: String -> FilePath -> FilePath -> IO ()
 runPreprocessor name from to = do
     txt <- readFile from
     let pragmas =
-            "{-# LANGUAGE ConstraintKinds, RebindableSyntax, PartialTypeSignatures, DataKinds, TypeFamilies, MultiParamTypeClasses, UndecidableInstances, FlexibleInstances #-}\n"++
-            "{-# OPTIONS_GHC -fplugin=Type.Compare.Plugin #-}\n"
+            "{-# LANGUAGE ConstraintKinds, RebindableSyntax, PartialTypeSignatures, DataKinds, TypeFamilies, MultiParamTypeClasses, UndecidableInstances, FlexibleInstances #-}\n"
+--            "{-# OPTIONS_GHC -fplugin=Type.Compare.Plugin #-}\n"
     fromhs <- parseFile name from
     let (header,decls) = moduleSplit fromhs
     writeFile to pragmas
