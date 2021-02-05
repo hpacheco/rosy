@@ -260,6 +260,7 @@ module Rosy
     --
     -- | You can compose and create new tasks to better control your robot simulations.
     , module Control.Effect
+    , module Control.Monad
     --
     -- *** Turtlesim
     --
@@ -314,6 +315,7 @@ module Rosy
     ) where
 
 import Control.Effect
+import Control.Monad hiding ((>>),(>>=),(>>=),return,fail)
 import Rosy.Controller.Time
 import Rosy.Controller.Core
 import Rosy.Controller.Kobuki

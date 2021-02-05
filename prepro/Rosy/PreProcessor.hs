@@ -48,7 +48,7 @@ runPreprocessor name from to = do
     fromhs <- parseFile name from
     let (header,decls) = moduleSplit fromhs
     writeFile to pragmas
-    appendFile to header
+    appendFile to (header ++ "\n")
     appendFile to "import Prelude\n"
     appendFile to decls
     appendInstances to (moduleDatas fromhs) (moduleDefaults fromhs)
