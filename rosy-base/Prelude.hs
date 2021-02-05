@@ -8,7 +8,7 @@ module Prelude
   , Default(..)
   , Typeable(..)
   , Generic(..)
-  . Generic1(..)
+  , Generic1(..)
   ) where
 
 import "base" Prelude as General hiding ((>>=),(>>),return,fail)
