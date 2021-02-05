@@ -64,6 +64,15 @@ instance E.Effect Task where
 instance SubsetEithers f1 f2 => E.Subeffect Task f1 f2 where
     sub m = SubTask m Proxy
 
+instance (SubsetEithers '[] f,UnionEithers f f, f ~ Nub (Sort (f :++ f))) => Functor (Task f) where
+    fmap f m = m >>= return . f
+instance (SubsetEithers '[] f,UnionEithers f f, f ~ Nub (Sort (f :++ f))) => Applicative (Task f) where
+    pure = return
+    m1 <*> m2 = m1 >>= (\x1 -> m2 >>= (\x2 -> return (x1 x2)))
+instance (SubsetEithers '[] f,UnionEithers f f, f ~ Nub (Sort (f :++ f))) => Monad (Task f) where
+    return x = SubTask (RetTask x) Proxy
+    m1 >>= f = BindTask m1 f
+
 -- | A 'Task' cancelling event.
 data Cancel = Cancel
   deriving (Show,Eq,Ord,Typeable)

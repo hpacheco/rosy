@@ -75,7 +75,7 @@ loadTurtle :: String -> IO Picture
 loadTurtle str = loadSizedImageById 45 45 (takeBaseName str)
 #else
 loadTurtle str = do
-    pic' <- getDataFileName $ "images" </> pic
+    pic' <- getDataFileName $ "images" </> str
     Just img <- loadJuicyPNG pic'
     return img
 #endif
