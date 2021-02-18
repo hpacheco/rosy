@@ -78,9 +78,11 @@ import System.Process
 readRobotVelocity :: RobotState -> Node ThreadId
 readRobotVelocity st = do
     v <- subscribe ("turtle"++show (_robotId st) </> "cmd_vel")
-    flip runHandler v $ \twist -> liftIO $ atomically $ do
-        now <- unsafeIOToSTM $ getCurrentTime
-        writeTVar (_robotVel st) (twist,now)
+    flip runHandler v $ \twist -> liftIO $ do
+        atomically $ do
+            now <- unsafeIOToSTM $ getCurrentTime
+            writeTVar (_robotVel st) (twist,now)
+        --liftIO $ putStrLn $ "update vel " ++ show twist
 
 -- turtlesim core applies the desired velocity during 1s, and zeroes them afterwards
 updateRobotVelocity :: RobotState -> STM Twist
@@ -105,6 +107,7 @@ runRobotPhysics st = liftIO $ do
         
         -- update position
         vel' <- updateRobotVelocity st
+        --unsafeIOToSTM $ putStrLn $ show vel'
         let vlin' = realToFrac $ Vector3._x $ Twist._linear vel'
         let vrot' = realToFrac $ Vector3._z $ Twist._angular vel'
         let rads' = rads + vrot' / realToFrac robotFrequency
@@ -163,12 +166,14 @@ killService w (KillRequest name) = do
 
 spawnService :: WorldState -> SpawnRequest -> Node SpawnResponse
 spawnService w req@(SpawnRequest x y o name) = do
+    --liftIO $ putStrLn $ "spawn find "
     mb <- liftIO $ findInactiveRobot (_worldStateRobots w)
+    --liftIO $ putStrLn $ "spawn " ++ show (fmap _robotId mb)
     case mb of 
         Nothing -> return $ SpawnResponse ""
         Just r -> do
-            liftIO $ spawnRobotState (Pose x y o 0 0) name r
-            return $ SpawnResponse name
+            name' <- liftIO $ spawnRobotState (Pose x y o 0 0) name r
+            return $ SpawnResponse name'
 
 setPenService :: WorldState -> Int -> SetPenRequest -> Node SetPenResponse
 setPenService w i req@(SetPenRequest r g b width off)

@@ -65,7 +65,9 @@ findRobot name (r:rs) = do
 findInactiveRobot :: [RobotState] -> IO (Maybe RobotState)
 findInactiveRobot [] = return Nothing
 findInactiveRobot (r:rs) = do
+    --putStrLn $ "find " ++ show (_robotId r)
     off <- atomically $ isEmptyTMVar $ _robotOn r
+    --putStrLn $ "found " ++ show (_robotId r) ++ " " ++ show off
     if off
         then return $ Just r
         else findInactiveRobot rs
@@ -115,12 +117,16 @@ killRobotState st = do
         takeTMVar (_robotOn st)
         writeTVar (_robotName st) $ "turtle"++show (_robotId st)
 
-spawnRobotState :: Pose -> String -> RobotState -> IO ()
+spawnRobotState :: Pose -> String -> RobotState -> IO String
 spawnRobotState pose name st = do
     atomically $ do
         writeTVar (_robotPose st) pose
         putTMVar (_robotOn st) ()
-        unless (List.null name) $ writeTVar (_robotName st) name
+        if (List.null name)
+            then readTVar (_robotName st)
+            else do
+                writeTVar (_robotName st) name
+                return name
 
 setPenRobotState :: SetPenRequest -> RobotState -> IO ()
 setPenRobotState req st = do

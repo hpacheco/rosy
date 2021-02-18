@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns, OverloadedStrings, DeriveDataTypeable, DeriveGeneric, FlexibleInstances #-}
+{-# LANGUAGE GADTs, ViewPatterns, OverloadedStrings, DeriveDataTypeable, DeriveGeneric, FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures, DataKinds #-}
 
@@ -85,6 +85,43 @@ type TurtleNumber = Int
 
 turtleNumber :: IsTurtleNumber n => Turtle n a -> TurtleNumber
 turtleNumber (_::Turtle n a) = fromEnum $ natVal (Proxy::Proxy n)
+
+turtleNumberProxy :: Turtle n a -> Proxy n
+turtleNumberProxy _ = Proxy
+
+data SomeTurtle a where
+    SomeTurtle :: IsTurtleNumber n => Turtle n a -> SomeTurtle a
+    
+instance Functor SomeTurtle where
+    fmap (f::a->b) (SomeTurtle (Turtle a::Turtle n a)) = SomeTurtle (Turtle (f a)::Turtle n b)
+
+someTurtleNumber :: TurtleNumber -> SomeTurtle ()
+someTurtleNumber 1 = SomeTurtle (Turtle ()::Turtle 1 ())
+someTurtleNumber 2 = SomeTurtle (Turtle ()::Turtle 2 ())
+someTurtleNumber 3 = SomeTurtle (Turtle ()::Turtle 3 ())
+someTurtleNumber 4 = SomeTurtle (Turtle ()::Turtle 4 ())
+someTurtleNumber 5 = SomeTurtle (Turtle ()::Turtle 5 ())
+someTurtleNumber 6 = SomeTurtle (Turtle ()::Turtle 6 ())
+someTurtleNumber 7 = SomeTurtle (Turtle ()::Turtle 7 ())
+someTurtleNumber 8 = SomeTurtle (Turtle ()::Turtle 8 ())
+someTurtleNumber 9 = SomeTurtle (Turtle ()::Turtle 9 ())
+
+someTurtle :: TurtleNumber -> a -> SomeTurtle a
+someTurtle n a = fmap (const a) (someTurtleNumber n)
+
+instance Show a => Show (SomeTurtle a) where
+    show (SomeTurtle t) = show t
+instance Eq a => Eq (SomeTurtle a) where
+    (SomeTurtle t1) == (SomeTurtle t2) = case sameNat (turtleNumberProxy t1) (turtleNumberProxy t2) of
+        Nothing -> False
+        Just _ -> unTurtle t1 == unTurtle t2
+instance Ord a => Ord (SomeTurtle a) where
+    compare (SomeTurtle t1) (SomeTurtle t2) = compare (natVal $ turtleNumberProxy t1,unTurtle t1) (natVal $ turtleNumberProxy t2,unTurtle t2) 
+
+deriving instance Typeable (SomeTurtle a)
+
+instance D.Default a => D.Default (SomeTurtle a) where
+    def = SomeTurtle (Turtle D.def :: Turtle 1 a)
 
 data AnyTurtle a = AnyTurtle { anyTurtleNumber :: TurtleNumber, unAnyTurtle :: a }
     deriving (Show, Eq, Ord, Typeable, G.Generic)

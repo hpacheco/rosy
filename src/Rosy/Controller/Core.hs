@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances, StandaloneDeriving #-}
+{-# LANGUAGE ScopedTypeVariables, MultiParamTypeClasses, CPP, DeriveGeneric, GeneralizedNewtypeDeriving, UndecidableInstances, TemplateHaskell, TypeSynonymInstances, FlexibleInstances, StandaloneDeriving #-}
 
 module Rosy.Controller.Core where
 
@@ -358,20 +358,27 @@ publishedROS adv t = lift $ do
                 Just a -> writeTChan chan a
     return $ fmap put t
     
+--mergeT :: Monad m => Topic TIO (m ()) -> Topic TIO (m ()) -> (Topic TIO (m ()))
+--mergeT t1 t2 = fmap (uncurry (>>)) $ Topic.bothNew t1 t2
+    
 mergeT :: Monad m => Topic TIO (m ()) -> Topic TIO (m ()) -> (Topic TIO (m ()))
-mergeT t1 t2 = fmap (uncurry (>>)) $ Topic.bothNew t1 t2
+mergeT t1 t2 = Topic $ do
+    (m1,t1') <- runTopic t1
+    (m2,t2') <- runTopic t2
+    return (m1 >> m2,mergeT t1' t2')
     
 instance Published Say where
     published = publishedROS $ \t -> runHandler_ (\(Say str) -> liftIO $ reportMessage str) t
 
 instance (Published a,Published b) => Published (a,b) where
     published tab = do
-        pair <- liftIO $ newTVarIO (error "no pair value")
-        (tab1,tab23) <- lift $ nodeTIO $ Topic.tee tab
-        (tab2,tab3) <- lift $ nodeTIO $ Topic.tee tab23
-        let t' = flip fmap tab1 $ \mx -> mx >>= writeTVar pair
-        let ta = flip fmap tab2 $ const $ liftM (fmap fst) $ readTVar pair
-        let tb = flip fmap tab3 $ const $ liftM (fmap snd) $ readTVar pair
+        chan1 <- liftIO $ newTChanIO 
+        chan2 <- liftIO $ newTChanIO 
+        let t' = flip fmap tab $ \mx -> mx >>= \mb -> case mb of
+                Nothing -> return ()
+                Just (a,b) -> writeTChan chan1 a >> writeTChan chan2 b
+        let ta = Topic.repeat $ tryReadTChan chan1
+        let tb = Topic.repeat $ tryReadTChan chan2
         ta' <- published ta
         tb' <- published tb
         return $ mergeT t' (mergeT ta' tb')
@@ -399,22 +406,14 @@ instance (Published a,Published b,Published c,Published d,Published e,Published 
 
 instance (Published a,Published b) => Published (Either a b) where
     published tab = do
-        pair <- liftIO $ newTVarIO (error "no sum value")
-        (tab1,tab23) <- lift $ nodeTIO $ Topic.tee tab
-        (tab2,tab3) <- lift $ nodeTIO $ Topic.tee tab23
-        let t' = flip fmap tab1 (\mx -> mx >>= writeTVar pair)
-        let ta = flip fmap tab2 $ const $ do
-                mbe <- readTVar pair
-                case mbe of
-                    Nothing -> return Nothing
-                    Just (Left a) -> return $ Just a
-                    Just (Right b) -> return Nothing
-        let tb = flip fmap tab3 $ const $ do
-                mbe <- readTVar pair
-                case mbe of
-                    Nothing -> return Nothing
-                    Just (Left a) -> return Nothing
-                    Just (Right b) -> return $ Just b
+        chan1 <- liftIO $ newTChanIO 
+        chan2 <- liftIO $ newTChanIO 
+        let t' = flip fmap tab $ \mx -> mx >>= \mb -> case mb of
+                Nothing -> return ()
+                Just (Left a) -> writeTChan chan1 a
+                Just (Right b) -> writeTChan chan2 b
+        let ta = Topic.repeat $ tryReadTChan chan1
+        let tb = Topic.repeat $ tryReadTChan chan2
         ta' <- published ta
         tb' <- published tb
         return $ mergeT t' (mergeT ta' tb')
@@ -603,7 +602,7 @@ orientationToDegrees = radiansToDegrees . Rosy.Controller.Core.orientation
 normOrientation :: Orientation -> Orientation
 normOrientation o = norm2 $ mod' o (Orientation $ 2 * pi)
     where
-    norm2 a = if a >= pi then 2 * pi - a else a
+    norm2 a = if a >= pi then - 2 * pi + a else a
     
 -- * Runnable
 

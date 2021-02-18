@@ -149,6 +149,9 @@ module Rosy
     --
     ,Turtle(..), IsTurtleNumber(..), TurtleNumber(..), turtleNumber
     --
+    -- | One of the 9 available turtles
+    --
+    ,SomeTurtle(..), someTurtle, someTurtleNumber
     -- | Any of the 9 available turtles, used to listen to events and send actions to possibly different turtles.
     --
     ,AnyTurtle(..)
@@ -256,7 +259,7 @@ module Rosy
     --
     , task, Done(..), noInit
     , Task, DoneT
-    , call, Call, Cancel(..), noCancel, Feedback(..), noFeedback
+    , call, Call, Cancel(..), noCancel, Feedback(..), noFeedback,say
     --
     -- | You can compose and create new tasks to better control your robot simulations.
     , module Control.Effect

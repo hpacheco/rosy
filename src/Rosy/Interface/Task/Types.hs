@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, TupleSections, UndecidableInstances, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
-{-# LANGUAGE TypeInType, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, GADTs #-}
+{-# LANGUAGE Rank2Types, TypeFamilyDependencies, TypeInType, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, GADTs #-}
 
 module Rosy.Interface.Task.Types where
 
@@ -47,11 +47,15 @@ import GHC.Conc
 
 -- | A 'Task' is a monadic 'Effect' that can be composed sequentially, in the sense that a task will only start after the previous task has finished.
 data Task (feedback :: [*]) end where
-    Task :: (SubscribeDones (CtrDones action),SubscribeFeedbacks (CtrFeedbacks action),Published init,Controller action) => init -> action -> Task (CtrFeedbacks action) (DoneT action)
+    Task :: (SubscribeDones (CtrDones (init,action)),SubscribeFeedbacks (CtrFeedbacks (init,action)),Published init,Controller action) => init -> action -> Task (CtrFeedbacks (init,action)) (DoneT (init,action))
     RetTask :: a -> Task '[] a
     BindTask :: (UnionEithers fa fb) => Task fa a -> (a -> Task fb b) -> Task (Union fa fb) b
     SubTask :: (SubsetEithers f1 f2) => Task f1 a -> Proxy f2 -> Task f2 a
     CoreTask :: Node a -> Task '[] a
+    
+-- | The type of 'Task' 'call's inside controllers.
+data Call when see res where
+    Call :: (Subscribed when,Published see,Published res,Typeable when,Typeable see,Typeable res) => Task feed end -> (when -> Maybe Cancel) -> (Eithers feed -> see) -> (end -> res) -> Call when see res
     
 instance E.Effect Task where
     type Unit Task = '[]
@@ -76,6 +80,10 @@ instance (SubsetEithers '[] f,UnionEithers f f, f ~ Nub (Sort (f :++ f))) => Mon
 -- | A 'Task' cancelling event.
 data Cancel = Cancel
   deriving (Show,Eq,Ord,Typeable)
+instance Subscribed Cancel where
+    subscribed = subscribedEvent
+instance Published Cancel where
+    published = publishedEvent
   
 -- | A type-level tag that allows a 'Task' controller to publish feed messages.
 data Feedback a = Feedback { unFeedback :: a }
@@ -91,6 +99,7 @@ instance Typeable a => Published (Feedback a) where
 type DoneT a = Eithers (CtrDones a)
 
 type CtrDones a = AsSet (CtrDone a)
+
 type CtrFeedbacks a = AsSet (CtrFeedback a)
 
 class SubscribeDones (xs :: [*]) where
@@ -150,6 +159,7 @@ type family CtrDone (a :: *) :: [*] where
     CtrDone (Either a b) = CtrDone a :++ CtrDone b
     CtrDone (Maybe a) = CtrDone a
     CtrDone (a -> b) = CtrDone b
+    CtrDone (Call when see res) = CtrDone see :++ CtrDone res
     CtrDone a = '[]
 
 type family CtrFeedback (a :: *) :: [*] where
@@ -166,6 +176,7 @@ type family CtrFeedback (a :: *) :: [*] where
     CtrFeedback (Either a b) = CtrFeedback a :++ CtrFeedback b
     CtrFeedback (Maybe a) = CtrFeedback a
     CtrFeedback (a -> b) = CtrFeedback b
+    CtrFeedback (Call when see res) = CtrFeedback see :++ CtrFeedback res
     CtrFeedback a = '[]
     
 type instance Cmp (a :: *) (b :: *) = CmpType a b
@@ -291,9 +302,26 @@ type family Eithers (x :: [*]) :: * where
             Eithers '[x] = x
             Eithers (x ': xs) = Either x (Eithers xs)
 
-type family Eithers' (x :: [*]) :: * where
+type family Eithers' (x :: [*]) = result | result -> x where
             Eithers' '[] = ()
             Eithers' (x ': xs) = Either x (Eithers' xs)
+
+type family TMap (f :: * -> *) (xs :: [*]) = result | result -> xs where
+    TMap f '[] = '[]
+    TMap f (x ': xs) = f x ': TMap f xs
+
+class MapEithers f (xs::[*]) where
+    mapEithers :: (forall a. a -> f a) -> Proxy xs -> Eithers xs -> Eithers (TMap f xs)
+
+instance MapEithers f '[] where
+    mapEithers _ _ x = x
+
+instance (Eithers (x : xs) ~ Either x (Eithers xs),Eithers (f x : TMap f xs) ~ Either (f x) (Eithers (TMap f xs)),MapEithers f xs) => MapEithers f (x ': xs) where
+    mapEithers f (p::Proxy (x ': xs)) (Left x) = Left (f x)
+    mapEithers f (p::Proxy (x ': xs)) (Right y) = Right $ mapEithers f (Proxy::Proxy xs) y
+
+instance {-# OVERLAPS #-} MapEithers f '[x] where
+    mapEithers f _ x = f x
 
 class ToFromEithers (xs :: [*]) where
     toEithers :: Proxy xs -> Eithers' xs -> Maybe (Eithers xs)
