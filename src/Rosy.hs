@@ -260,6 +260,7 @@ module Rosy
     , task, Done(..), noInit
     , Task, DoneT
     , call, Call, Cancel(..), noCancel, Feedback(..), noFeedback,say
+    , parallel
     --
     -- | You can compose and create new tasks to better control your robot simulations.
     , module Control.Effect

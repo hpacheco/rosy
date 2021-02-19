@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, TupleSections, UndecidableInstances, GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances, MultiParamTypeClasses #-}
-{-# LANGUAGE TypeInType, PolyKinds, TypeOperators, TypeFamilies, FlexibleContexts, GADTs #-}
+{-# LANGUAGE TypeInType, PolyKinds, ConstraintKinds, TypeOperators, TypeFamilies, FlexibleContexts, GADTs #-}
 
 module Rosy.Interface.Task where
 
@@ -202,16 +202,51 @@ instance Typeable a => Subscribed (PDone a) where
 instance Typeable a => Published (PDone a) where
     published = publishedEvent
 
+type ParallelK1 f1 f2 = Nub (Sort
+                                (((CtrFeedback
+                                     (Eithers (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                   :++ '[])
+                                  :++ (CtrFeedback
+                                         (Eithers
+                                            (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                       :++ '[]))
+                                 :++ '[])) ~ Nub (Sort (f1 :++ f2))
+type ParallelK2 f1 f2 a b = Eithers
+                          (Nub
+                             (Sort
+                                (((CtrDone
+                                     (Eithers (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                   :++ '[])
+                                  :++ (CtrDone
+                                         (Eithers
+                                            (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                       :++ '[]))
+                                 :++ '[(a, b)]))) ~ (a,b)
+type ParallelK3 f1 f2 = (Published (Eithers (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2)))))
+type ParallelK4 f1 f2 a b = (SubscribeDones
+                          (Nub
+                             (Sort
+                                (((CtrDone
+                                     (Eithers (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                   :++ '[])
+                                  :++ (CtrDone
+                                         (Eithers
+                                            (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))))
+                                       :++ '[]))
+                                 :++ '[(a, b)]))))
+type ParallelK5 f1 f2 = (SubscribeFeedbacks (Nub (Sort (f1 :++ f2))))                            
+type ParallelK f1 f2 a b = (UnionEithers (TMap Feedback f1) (TMap Feedback f2),ToFromEithers (Nub (Sort (TMap Feedback f1 :++ TMap Feedback f2))),ToFromEithers (TMap Feedback f1),ToFromEithers (TMap Feedback f2),MapEithers Feedback f1,MapEithers Feedback f2,ParallelK1 f1 f2,ParallelK2 f1 f2 a b,ParallelK3 f1 f2,ParallelK4 f1 f2 a b,ParallelK5 f1 f2,Typeable a,Typeable b)
+
 -- | Run two 'Task's in parallel
---parallel :: (Typeable a,Typeable b) => Task f1 a -> Task f2 b -> Task (Union f1 f2) (a,b)
---parallel (t1::Task f1 a) (t2::Task f2 b) = task (call t1 Just refeed1 PDone,call t2 Just refeed2 PDone) done
---    where
---    done :: PDone a -> PDone b -> Done (a,b)
---    done (PDone a) (PDone b) = Done (a,b)
---    refeed1 :: Eithers f1 -> Maybe (Eithers (Union (TMap Feedback f1) (TMap Feedback f2)))
---    refeed1 = undefined
---    refeed2 :: Eithers f2 -> Maybe (Eithers (Union (TMap Feedback f1) (TMap Feedback f2)))
---    refeed2 = undefined
+parallel :: ParallelK f1 f2 a b => Task f1 a -> Task f2 b -> Task (Union f1 f2) (a,b)
+parallel (t1::Task f1 a) (t2::Task f2 b) = task (call t1 Just refeed1 PDone,call t2 Just refeed2 PDone) done
+    where
+    done :: PDone a -> PDone b -> Done (a,b)
+    done (PDone a) (PDone b) = Done (a,b)
+    refeed1 :: Eithers f1 -> Maybe (Eithers (Union (TMap Feedback f1) (TMap Feedback f2)))
+    refeed1 e = leftUnionEithers (Proxy::Proxy (TMap Feedback f1)) (Proxy::Proxy (TMap Feedback f2)) $ mapEithers Feedback (Proxy::Proxy f1) e
+    refeed2 :: Eithers f2 -> Maybe (Eithers (Union (TMap Feedback f1) (TMap Feedback f2)))
+    refeed2 = undefined
     --refeed1 = leftUnionEithers (Proxy::Proxy f1) (Proxy::Proxy f2)
     --refeed2 :: Eithers f2 -> Maybe (Eithers (Union f1 f2))
     --refeed2 = rightUnionEithers (Proxy::Proxy f1) (Proxy::Proxy f2)
