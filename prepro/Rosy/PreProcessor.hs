@@ -43,8 +43,8 @@ runPreprocessor :: String -> FilePath -> FilePath -> IO ()
 runPreprocessor name from to = do
     txt <- readFile from
     let pragmas =
-            "{-# LANGUAGE ConstraintKinds, RebindableSyntax, PartialTypeSignatures, DataKinds, TypeFamilies, MultiParamTypeClasses, UndecidableInstances, FlexibleInstances #-}\n"
---            "{-# OPTIONS_GHC -fplugin=Type.Compare.Plugin #-}\n"
+            "{-# LANGUAGE ConstraintKinds, PartialTypeSignatures, DataKinds, TypeFamilies, MultiParamTypeClasses, UndecidableInstances, FlexibleInstances #-}\n"
+--            "{-# OPTIONS_GHC -fplugin=Type.Compare.Plugin #-}\n" RebindableSyntax
     fromhs <- parseFile name from
     let (header,decls) = moduleSplit fromhs
     writeFile to pragmas
@@ -126,9 +126,9 @@ declHeadVars (DHApp _ d v) = prettyDoc v : declHeadVars d
 appendInstances :: FilePath -> [(Doc,Doc,[Doc])] -> [Doc] -> IO ()
 appendInstances fp datas defs = do
     let code = generateInstances defs datas
-    let ifthenelse = text "ifThenElse True x y = x"
-                 $+$ text "ifThenElse False x y = y"
-    appendFile fp (show $ code $+$ ifthenelse)
+--    let ifthenelse = text "ifThenElse True x y = x"
+--                 $+$ text "ifThenElse False x y = y"
+    appendFile fp (show $ code) -- $+$ ifthenelse)
 
 generateInstances :: [Doc] -> [(Doc,Doc,[Doc])] -> Doc
 generateInstances defs = foldr (\d code -> generateDataInstances defs d $+$ code) mempty 

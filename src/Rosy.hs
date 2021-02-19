@@ -151,7 +151,7 @@ module Rosy
     --
     -- | One of the 9 available turtles
     --
-    ,SomeTurtle(..), someTurtle, someTurtleNumber
+    ,SomeTurtle(..), someTurtle, someTurtleNumber, onTurtle
     -- | Any of the 9 available turtles, used to listen to events and send actions to possibly different turtles.
     --
     ,AnyTurtle(..)
@@ -257,13 +257,13 @@ module Rosy
     --
     -- | You can also control your robot by sequencing tasks.
     --
-    , task, Done(..), noInit
-    , Task, DoneT
+    , task, subTask, Done(..), noInit
+    , Task --,DoneT
     , call, Call, Cancel(..), noCancel, Feedback(..), noFeedback,say
-    , parallel
+    , parallel, parallel_, race, race_
     --
     -- | You can compose and create new tasks to better control your robot simulations.
-    , module Control.Effect
+--    , module Control.Effect
     , module Control.Monad
     --
     -- *** Turtlesim
@@ -318,8 +318,8 @@ module Rosy
     
     ) where
 
-import Control.Effect
-import Control.Monad hiding ((>>),(>>=),(>>=),return,fail)
+--import Control.Effect
+import Control.Monad --hiding ((>>),(>>=),(>>=),return,fail)
 import Rosy.Controller.Time
 import Rosy.Controller.Core
 import Rosy.Controller.Kobuki

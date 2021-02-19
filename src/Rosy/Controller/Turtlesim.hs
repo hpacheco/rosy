@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, ViewPatterns, OverloadedStrings, DeriveDataTypeable, DeriveGeneric, FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell, ScopedTypeVariables, StandaloneDeriving, GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures, DataKinds #-}
+{-# LANGUAGE KindSignatures, DataKinds, Rank2Types #-}
 
 module Rosy.Controller.Turtlesim where
 
@@ -19,7 +19,7 @@ import Control.Concurrent.STM
 import Control.Concurrent.Chan
 import Control.Monad.Trans
 import Control.Monad
-import qualified Control.Effect as E
+--import qualified Control.Effect as E
 
 import Rosy.Controller.Core
 import Rosy.Util
@@ -108,6 +108,9 @@ someTurtleNumber 9 = SomeTurtle (Turtle ()::Turtle 9 ())
 
 someTurtle :: TurtleNumber -> a -> SomeTurtle a
 someTurtle n a = fmap (const a) (someTurtleNumber n)
+
+onTurtle :: TurtleNumber -> (forall n. IsTurtleNumber n => Turtle n () -> res) -> res
+onTurtle (someTurtleNumber -> SomeTurtle turtle) f = f turtle
 
 instance Show a => Show (SomeTurtle a) where
     show (SomeTurtle t) = show t
@@ -289,17 +292,17 @@ instance Published Background where
 
 -- ** Turtlesim services
 
-clear :: Task '[] ()
-clear = CoreTask (callService "clear" EmptyRequest (Proxy::Proxy EmptyResponse)) E.>> E.return ()
+clear :: Task () ()
+clear = CoreTask (callService "clear" EmptyRequest (Proxy::Proxy EmptyResponse)) >> return ()
 
-reset :: Task '[] ()
-reset = CoreTask (callService "reset" EmptyRequest (Proxy::Proxy EmptyResponse)) E.>> E.return ()
+reset :: Task () ()
+reset = CoreTask (callService "reset" EmptyRequest (Proxy::Proxy EmptyResponse)) >> return ()
 
-kill :: TurtleNumber -> Task '[] ()
-kill i = CoreTask (callService "kill" (KillRequest $ "turtle"++show i) (Proxy::Proxy KillResponse)) E.>> E.return ()
+kill :: TurtleNumber -> Task () ()
+kill i = CoreTask (callService "kill" (KillRequest $ "turtle"++show i) (Proxy::Proxy KillResponse)) >> return ()
 
-spawn :: Position -> Orientation -> Task '[] TurtleNumber
-spawn (Position x y) (Orientation o) = CoreTask (callService "spawn" (SpawnRequest (realToFrac x) (realToFrac y) (realToFrac o) "") (Proxy::Proxy SpawnResponse)) E.>>= (E.return . maybe 0 (invTurtleString . SpawnResponse._name))
+spawn :: Position -> Orientation -> Task () TurtleNumber
+spawn (Position x y) (Orientation o) = CoreTask (callService "spawn" (SpawnRequest (realToFrac x) (realToFrac y) (realToFrac o) "") (Proxy::Proxy SpawnResponse)) >>= (return . maybe 0 (invTurtleString . SpawnResponse._name))
 
 data OnOff = On | Off
     deriving (Show, Eq, Ord, Typeable, G.Generic)
@@ -319,12 +322,12 @@ data Pen = Pen { penColor :: Color, penWidth :: Int, penOnOff :: OnOff }
 
 instance D.Default Pen
 
-setPen :: TurtleNumber -> Pen -> Task '[] ()
-setPen i (Pen (Color r g b) width on) = CoreTask (callService (turtleString i </> "set_pen") (SetPenRequest (toEnum r) (toEnum g) (toEnum b) (toEnum width) (if isOff on then 1 else 0)) (Proxy::Proxy SetPenResponse)) E.>> E.return ()
+setPen :: TurtleNumber -> Pen -> Task () ()
+setPen i (Pen (Color r g b) width on) = CoreTask (callService (turtleString i </> "set_pen") (SetPenRequest (toEnum r) (toEnum g) (toEnum b) (toEnum width) (if isOff on then 1 else 0)) (Proxy::Proxy SetPenResponse)) >> return ()
 
-teleportAbsolute :: TurtleNumber -> Position -> Orientation -> Task '[] ()
-teleportAbsolute i (Position x y) (Orientation o) = CoreTask (callService (turtleString i </> "teleport_absolute") (TeleportAbsoluteRequest (realToFrac x) (realToFrac y) (realToFrac o)) (Proxy::Proxy TeleportAbsoluteResponse)) E.>> E.return ()
+teleportAbsolute :: TurtleNumber -> Position -> Orientation -> Task () ()
+teleportAbsolute i (Position x y) (Orientation o) = CoreTask (callService (turtleString i </> "teleport_absolute") (TeleportAbsoluteRequest (realToFrac x) (realToFrac y) (realToFrac o)) (Proxy::Proxy TeleportAbsoluteResponse)) >> return ()
 
-teleportRelative :: TurtleNumber -> Distance -> Task '[] ()
-teleportRelative i (Velocity lin ang) = CoreTask (callService (turtleString i </> "teleport_relative") (TeleportRelativeRequest (realToFrac lin) (realToFrac ang)) (Proxy::Proxy TeleportRelativeResponse)) E.>> E.return ()
+teleportRelative :: TurtleNumber -> Distance -> Task () ()
+teleportRelative i (Velocity lin ang) = CoreTask (callService (turtleString i </> "teleport_relative") (TeleportRelativeRequest (realToFrac lin) (realToFrac ang)) (Proxy::Proxy TeleportRelativeResponse)) >> return ()
 

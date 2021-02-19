@@ -35,7 +35,7 @@ Library
 
   Build-depends:       base >= 4.5 && < 6,
                        uuid, random, lens-family-th, lens-family-core, mtl, transformers, containers, data-default-generics, time, stm, async, filepath, gloss-window, safe, dlist,
-                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, ROS-turtlesim-msgs, ROS-std-srvs-msgs, roshask, thread-hierarchy, type-level-sets, cmptype, effect-monad
+                       ROS-nav-msgs, ROS-geometry-msgs, ROS-kobuki-msgs, ROS-turtlesim-msgs, ROS-std-srvs-msgs, roshask, thread-hierarchy
   if impl(ghcjs)
     Build-depends:
                        codeworld-api-gloss
