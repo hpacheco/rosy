@@ -39,7 +39,7 @@ import System.IO.Unsafe
 import GHC.Conc
     
 say :: String -> Task () ()
-say str = CoreTask $ liftIO $ putStrLn $ str
+say str = CoreTask $ liftIO $ reportMessage $ str
     
 instance (Typeable feed,Typeable a) => Runnable (Task feed a) where
     run t = do
