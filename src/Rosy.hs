@@ -147,7 +147,7 @@ module Rosy
     --
     -- | A fixed numbered turtle, from 1 to 9.
     --
-    ,Turtle(..), IsTurtleNumber(..), TurtleNumber(..), turtleNumber
+    ,Turtle(..), IsTurtleNumber(..), TurtleNumber(..), turtleNumber, turtlesimDefaultPosition, turtlesimDefaultOrientation
     --
     -- | One of the 9 available turtles
     --

@@ -82,6 +82,7 @@ loadTurtle str = do
     return img
 #endif
 
+
 newRobotState :: (Int,FilePath) -> IO RobotState
 newRobotState (i,pic) = do
     img <- loadTurtle pic

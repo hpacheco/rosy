@@ -242,11 +242,13 @@ instance Subscribed (AnyTurtle Velocity) where
 
 -- ** Turtlesim params
 
---backgroundColorFromROS :: Color -> BackgroundColor
---backgroundColorFromROS (Color r g b) = BackgroundColor (fromEnum r) (fromEnum g) (fromEnum b)
---
---backgroundColorToROS :: BackgroundColor -> Color
---backgroundColorToROS (BackgroundColor r g b) = Color (toEnum r) (toEnum g) (toEnum b)
+-- | The default position of a turtle
+turtlesimDefaultPosition :: Position
+turtlesimDefaultPosition = Position (250/45) (250/45)
+
+-- | The default orientation of a turtle
+turtlesimDefaultOrientation :: Orientation
+turtlesimDefaultOrientation = Orientation 0
 
 data Color = Color { r :: Int, g :: Int, b :: Int }
     deriving (Show, Eq, Ord, Typeable, G.Generic)
