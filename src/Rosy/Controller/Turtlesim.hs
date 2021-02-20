@@ -169,14 +169,14 @@ instance Published (AnyTurtle Velocity) where
 
 instance IsTurtleNumber n => Subscribed (Turtle n Pose) where
     subscribedProxy (Proxy :: Proxy (Turtle n Pose)) = subscribedROS $ do
-        pose <- subscribe (turtleString' (Proxy::Proxy n) </> "pose")
+        pose <- subscribeBuffered 1 (turtleString' (Proxy::Proxy n) </> "pose")
         return $ fmap Turtle pose
 
 instance Subscribed (AnyTurtle Pose) where
     subscribed = do
         chan <- liftIO $ newChan
         lift $ forM [1..9] $ \i -> do
-            t <- subscribe ("turtle" ++ show i </> "pose")
+            t <- subscribeBuffered 1 ("turtle" ++ show i </> "pose")
             flip runHandler_ t $ \v -> lift $ writeChan chan $ AnyTurtle i v
         let chanTopic = Topic $ do
                 x <- lift $ readChan chan
@@ -188,14 +188,14 @@ posePosition p = Position (realToFrac $ Pose._x p) (realToFrac $ Pose._y p)
 
 instance IsTurtleNumber n => Subscribed (Turtle n Position) where
     subscribedProxy (Proxy :: Proxy (Turtle n Position)) = subscribedROS $ do
-        pose <- subscribe (turtleString' (Proxy::Proxy n) </> "pose")
+        pose <- subscribeBuffered 1 (turtleString' (Proxy::Proxy n) </> "pose")
         return $ fmap (Turtle . posePosition) pose
         
 instance Subscribed (AnyTurtle Position) where
     subscribed = do
         chan <- liftIO $ newChan
         lift $ forM [1..9] $ \i -> do
-            t <- subscribe ("turtle" ++ show i </> "pose")
+            t <- subscribeBuffered 1 ("turtle" ++ show i </> "pose")
             flip runHandler_ t $ \v -> lift $ writeChan chan $ AnyTurtle i $ posePosition v
         let chanTopic = Topic $ do
                 x <- lift $ readChan chan
@@ -207,14 +207,14 @@ poseOrientation p = Orientation (realToFrac $ Pose._theta p)
         
 instance IsTurtleNumber n => Subscribed (Turtle n Orientation) where
     subscribedProxy (Proxy :: Proxy (Turtle n Orientation)) = subscribedROS $ do
-        odom <- subscribe (turtleString' (Proxy::Proxy n) </> "pose")
+        odom <- subscribeBuffered 1 (turtleString' (Proxy::Proxy n) </> "pose")
         return $ fmap (Turtle . poseOrientation) odom
 
 instance Subscribed (AnyTurtle Orientation) where
     subscribed = do
         chan <- liftIO $ newChan
         lift $ forM [1..9] $ \i -> do
-            t <- subscribe ("turtle" ++ show i </> "pose")
+            t <- subscribeBuffered 1 ("turtle" ++ show i </> "pose")
             flip runHandler_ t $ \v -> lift $ writeChan chan $ AnyTurtle i $ poseOrientation v
         let chanTopic = Topic $ do
                 x <- lift $ readChan chan
@@ -226,14 +226,14 @@ poseVelocity p = Velocity (realToFrac $ _linear_velocity p) (realToFrac $ _angul
         
 instance IsTurtleNumber n => Subscribed (Turtle n Velocity) where
     subscribedProxy (Proxy :: Proxy (Turtle n Velocity)) = subscribedROS $ do
-        odom <- subscribe (turtleString' (Proxy::Proxy n) </> "pose")
+        odom <- subscribeBuffered 1 (turtleString' (Proxy::Proxy n) </> "pose")
         return $ fmap (Turtle . poseVelocity) odom
  
 instance Subscribed (AnyTurtle Velocity) where
     subscribed = do
         chan <- liftIO $ newChan
         lift $ forM [1..9] $ \i -> do
-            t <- subscribe ("turtle" ++ show i </> "pose")
+            t <- subscribeBuffered 1 ("turtle" ++ show i </> "pose")
             flip runHandler_ t $ \v -> lift $ writeChan chan $ AnyTurtle i $ poseVelocity v
         let chanTopic = Topic $ do
                 x <- lift $ readChan chan

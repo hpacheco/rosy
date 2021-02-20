@@ -45,7 +45,7 @@ magnitudeVec (x,y) = sqrt (x * x + y * y)
 
 -- | The angle of this vector, relative to the x-axis.
 angleVec :: RealFloat a => (a,a) -> a
-angleVec (x, y) = atan2 y x
+angleVec (x,y) = atan2 y x
 
 scalarVec :: Floating a => a -> a -> (a,a)
 scalarVec magnitude angle = (magnitude * cos angle,magnitude * sin angle)
