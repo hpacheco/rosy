@@ -41,6 +41,7 @@ import Ros.Turtlesim.TeleportAbsoluteResponse
 import Ros.Turtlesim.TeleportRelativeRequest 
 import Ros.Turtlesim.TeleportRelativeResponse 
 
+import Control.Concurrent.MVar
 import Control.Concurrent.STM
 import Control.Monad as Monad
 import Control.Monad.Trans
@@ -171,7 +172,12 @@ spawnService w req@(SpawnRequest x y o name) = do
     case mb of 
         Nothing -> return $ SpawnResponse ""
         Just r -> do
-            name' <- spawnRobotState (Pose x y o 0 0) name r
+            flushTopic ("turtle" ++ show (_robotId r) </> "pose")
+            name' <- liftIO $ spawnRobotState (Pose x y o 0 0) name r
+            done <- liftIO $ newEmptyMVar
+            topic <- subscribe ("turtle" ++ show (_robotId r) </> "pose") 
+            flip runHandler topic $ \v -> when (v==Pose x y o 0 0) $ liftIO $ putMVar done ()
+            liftIO $ takeMVar done
             return $ SpawnResponse name'
 
 setPenService :: WorldState -> Int -> SetPenRequest -> Node SetPenResponse

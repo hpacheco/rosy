@@ -118,12 +118,10 @@ killRobotState st = do
         takeTMVar (_robotOn st)
         writeTVar (_robotName st) $ "turtle"++show (_robotId st)
 
-spawnRobotState :: Pose -> String -> RobotState -> Node String
+spawnRobotState :: Pose -> String -> RobotState -> IO String
 spawnRobotState pose name st = do
-    liftIO $ atomically $ writeTVar (_robotPose st) pose
-    liftIO $ threadDelay 1000000
-    flushTopic ("turtle" ++ show (_robotId st) </> "pose")
-    liftIO $ atomically $ do
+    atomically $ do
+        writeTVar (_robotPose st) pose
         putTMVar (_robotOn st) ()
         if (List.null name)
             then readTVar (_robotName st)
