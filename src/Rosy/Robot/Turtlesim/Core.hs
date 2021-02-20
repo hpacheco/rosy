@@ -161,17 +161,17 @@ killService w (KillRequest name) = do
     case mb of 
         Nothing -> return KillResponse
         Just r -> do
+            flushTopic ("turtle" ++ show (_robotId r) </> "pose")
             liftIO $ killRobotState r
             return KillResponse
 
 spawnService :: WorldState -> SpawnRequest -> Node SpawnResponse
 spawnService w req@(SpawnRequest x y o name) = do
-    --liftIO $ putStrLn $ "spawn find "
     mb <- liftIO $ findInactiveRobot (_worldStateRobots w)
-    --liftIO $ putStrLn $ "spawn " ++ show (fmap _robotId mb)
     case mb of 
         Nothing -> return $ SpawnResponse ""
         Just r -> do
+            flushTopic ("turtle" ++ show (_robotId r) </> "pose")
             name' <- liftIO $ spawnRobotState (Pose x y o 0 0) name r
             return $ SpawnResponse name'
 
@@ -187,6 +187,7 @@ teleportAbsoluteService :: WorldState -> Int -> TeleportAbsoluteRequest -> Node 
 teleportAbsoluteService w i req@(TeleportAbsoluteRequest x y o)
     | i >= 1 && i <= 9 = do
         let r = (_worldStateRobots w) !! (i-1)
+        flushTopic ("turtle" ++ show (_robotId r) </> "pose")
         liftIO $ teleportAbsoluteRobotState req r
         return $ TeleportAbsoluteResponse
     | otherwise = return TeleportAbsoluteResponse
@@ -195,6 +196,7 @@ teleportRelativeService :: WorldState -> Int -> TeleportRelativeRequest -> Node 
 teleportRelativeService w i req@(TeleportRelativeRequest lin ang)
     | i >= 1 && i <= 9 = do
         let r = (_worldStateRobots w) !! (i-1)
+        flushTopic ("turtle" ++ show (_robotId r) </> "pose")
         liftIO $ teleportRelativeRobotState req r
         return $ TeleportRelativeResponse
     | otherwise = return TeleportRelativeResponse
