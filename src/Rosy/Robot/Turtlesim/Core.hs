@@ -173,10 +173,11 @@ spawnService w req@(SpawnRequest x y o name) = do
         Nothing -> return $ SpawnResponse ""
         Just r -> do
             flushTopic ("turtle" ++ show (_robotId r) </> "pose")
-            name' <- liftIO $ spawnRobotState (Pose x y o 0 0) name r
+            let pose = Pose x y o 0 0
+            name' <- liftIO $ spawnRobotState pose name r
             done <- liftIO $ newEmptyMVar
             topic <- subscribe ("turtle" ++ show (_robotId r) </> "pose") 
-            flip runHandler topic $ \v -> when (v==Pose x y o 0 0) $ liftIO $ putMVar done ()
+            flip runHandler topic $ \v -> when (v==pose) $ liftIO $ putMVar done ()
             liftIO $ takeMVar done
             return $ SpawnResponse name'
 
@@ -193,7 +194,11 @@ teleportAbsoluteService w i req@(TeleportAbsoluteRequest x y o)
     | i >= 1 && i <= 9 = do
         let r = (_worldStateRobots w) !! (i-1)
         flushTopic ("turtle" ++ show (_robotId r) </> "pose")
-        liftIO $ teleportAbsoluteRobotState req r
+        pose <- liftIO $ teleportAbsoluteRobotState req r
+        done <- liftIO $ newEmptyMVar
+        topic <- subscribe ("turtle" ++ show (_robotId r) </> "pose") 
+        flip runHandler topic $ \v -> when (v==pose) $ liftIO $ putMVar done ()
+        liftIO $ takeMVar done
         return $ TeleportAbsoluteResponse
     | otherwise = return TeleportAbsoluteResponse
 
@@ -202,7 +207,11 @@ teleportRelativeService w i req@(TeleportRelativeRequest lin ang)
     | i >= 1 && i <= 9 = do
         let r = (_worldStateRobots w) !! (i-1)
         flushTopic ("turtle" ++ show (_robotId r) </> "pose")
-        liftIO $ teleportRelativeRobotState req r
+        pose <- liftIO $ teleportRelativeRobotState req r
+        done <- liftIO $ newEmptyMVar
+        topic <- subscribe ("turtle" ++ show (_robotId r) </> "pose") 
+        flip runHandler topic $ \v -> when (v==pose) $ liftIO $ putMVar done ()
+        liftIO $ takeMVar done
         return $ TeleportRelativeResponse
     | otherwise = return TeleportRelativeResponse
 

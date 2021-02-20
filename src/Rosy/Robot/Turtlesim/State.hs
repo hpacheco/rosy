@@ -118,7 +118,7 @@ killRobotState st = do
         takeTMVar (_robotOn st)
         writeTVar (_robotName st) $ "turtle"++show (_robotId st)
 
-spawnRobotState :: Pose -> String -> RobotState -> IO String
+spawnRobotState :: Pose -> String -> RobotState -> IO (String)
 spawnRobotState pose name st = do
     atomically $ do
         writeTVar (_robotPose st) pose
@@ -134,24 +134,29 @@ setPenRobotState req st = do
     atomically $ do
         writeTVar (_robotPen st) req
         
-teleportAbsoluteRobotState :: TeleportAbsoluteRequest -> RobotState -> IO ()
+teleportAbsoluteRobotState :: TeleportAbsoluteRequest -> RobotState -> IO Pose
 teleportAbsoluteRobotState (TeleportAbsoluteRequest x y o) st = do
     atomically $ do
-        modifyTVar (_robotPose st) $ \pose -> pose { Pose._x = truncateCoord x, Pose._y = truncateCoord y, Pose._theta = o }
+        pose <- readTVar (_robotPose st)
+        let pose' = pose { Pose._x = truncateCoord x, Pose._y = truncateCoord y, Pose._theta = o }
+        writeTVar (_robotPose st) pose'
+        return pose'
         
-teleportRelativeRobotState :: TeleportRelativeRequest -> RobotState -> IO ()
+teleportRelativeRobotState :: TeleportRelativeRequest -> RobotState -> IO Pose
 teleportRelativeRobotState (TeleportRelativeRequest vlin' vrot') st = do
     atomically $ do
-        modifyTVar (_robotPose st) $ \pose -> 
-            let x = Pose._x pose in
-            let y = Pose._y pose in
-            let rads = Pose._theta pose in
-            let rads' = rads + vrot' in
-            let v' = scalarVec vlin' rads' in
-            let (x',y') = (x,y) `addVec` v' in
-            let x'' = truncateCoord x' in
-            let y'' = truncateCoord y' in
-            pose { Pose._x = x'', Pose._y = y'', Pose._theta = rads' }
+        pose <- readTVar (_robotPose st)
+        let x = Pose._x pose
+        let y = Pose._y pose
+        let rads = Pose._theta pose
+        let rads' = rads + vrot' 
+        let v' = scalarVec vlin' rads' 
+        let (x',y') = (x,y) `addVec` v' 
+        let x'' = truncateCoord x' 
+        let y'' = truncateCoord y' 
+        let pose' = pose { Pose._x = x'', Pose._y = y'', Pose._theta = rads' }
+        writeTVar (_robotPose st) pose'
+        return pose'
 
 backgroundColor :: Color
 backgroundColor = makeColorI 69 86 255 255
