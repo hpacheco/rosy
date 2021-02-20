@@ -171,9 +171,7 @@ spawnService w req@(SpawnRequest x y o name) = do
     case mb of 
         Nothing -> return $ SpawnResponse ""
         Just r -> do
-            liftIO $ threadDelay 1000000 -- wait a second before flushing
-            flushTopic ("turtle" ++ show (_robotId r) </> "pose") 
-            name' <- liftIO $ spawnRobotState (Pose x y o 0 0) name r
+            name' <- spawnRobotState (Pose x y o 0 0) name r
             return $ SpawnResponse name'
 
 setPenService :: WorldState -> Int -> SetPenRequest -> Node SetPenResponse
