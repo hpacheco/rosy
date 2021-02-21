@@ -55,7 +55,8 @@ noInit = ()
 noCleanup = ()
 
 -- | Default 'Task' options: no initialization and no cleanup.
-taskOpts = TaskOpts noInit noCancel
+taskOpts :: TaskOpts () ()
+taskOpts = TaskOpts noInit noCleanup
     
 -- | A 'Task', that runs a controller 'action' until it emits a @Done@ event.
 task :: (Typeable feed,Typeable end,Published init,Controller action,Published cancel) => action -> TaskOpts init cancel -> Task feed end
@@ -100,6 +101,7 @@ noFeedback _ = ()
 noResponse _ = ()
 
 -- | Default 'call' options: no cancellation, no feedback and no response.
+callOpts :: CallOpts () feed () end ()
 callOpts = CallOpts noCancel noFeedback noResponse
 
 -- | Call a 'Task' from a controller. 
