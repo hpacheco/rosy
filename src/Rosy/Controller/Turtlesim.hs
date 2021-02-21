@@ -255,6 +255,12 @@ data Color = Color { r :: Int, g :: Int, b :: Int }
 
 instance D.Default Color
 
+black = Color 0 0 0
+red = Color 255 0 0
+green = Color 0 255 0
+blue = Color 0 0 255
+white = Color 255 255 255
+
 data Background = Background Color
     deriving (Show, Eq, Ord, Typeable, G.Generic)
 

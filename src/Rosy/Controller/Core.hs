@@ -528,12 +528,18 @@ vecToPosition (x,y) = Position x y
 positionToVec :: Position -> (Double,Double)
 positionToVec (Position x y) = (x,y)
 
+
 -- *+ Orientation
+
+-- | An angle in radians.
+type Radians = Double
+-- | An angle in degrees.
+type Degrees = Double
 
 -- | The orientation of the robot.
 newtype Orientation = Orientation
     { -- | Orientation of the robot as an angle relative to the horizontal X axis (radians).
-      orientation :: Double
+      orientation :: Radians
     } deriving (Show, Eq, Ord, Typeable, G.Generic)
     
 $(makeLensesBy (Just . (++"Lens")) ''Orientation)
@@ -577,9 +583,6 @@ instance Published Never where
 
 -- ** Other
 
--- | An angle in degrees.
-type Degrees = Double
-
 -- | A distance in centimeters.  
 type Centimeters = Double
 
@@ -600,9 +603,7 @@ orientationToDegrees = radiansToDegrees . Rosy.Controller.Core.orientation
 
 -- | Normalizes an angle in radians to a positive or negative value between '0' and 'pi' radians.
 normOrientation :: Orientation -> Orientation
-normOrientation o = norm2 $ mod' o (Orientation $ 2 * pi)
-    where
-    norm2 a = if a >= pi then - 2 * pi + a else a
+normOrientation (Orientation o) = Orientation $ normRadians o
     
 -- * Runnable
 

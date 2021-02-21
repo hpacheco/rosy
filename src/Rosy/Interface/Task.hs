@@ -3,7 +3,7 @@
 
 module Rosy.Interface.Task where
 
-import Control.Concurrent.Async hiding (race)
+import Control.Concurrent.Async hiding (race,cancel)
 import Control.Concurrent.Chan
 import Control.Concurrent
 import Control.Exception
@@ -37,6 +37,10 @@ import Ros.Topic as Topic
 import Unsafe.Coerce
 import System.IO.Unsafe
 import GHC.Conc
+import Prelude hiding (init)
+    
+once :: Published action => action -> Task () ()
+once init = task () $ TaskOpts init noCleanup
     
 say :: String -> Task () ()
 say str = CoreTask $ liftIO $ reportMessage $ str
@@ -46,34 +50,41 @@ instance (Typeable feed,Typeable a) => Runnable (Task feed a) where
         chan <- liftIO $ newChan
         kill <- liftIO $ newMVar $ return ()
         runNewUserNode $ runTask t (Just . noFeedback) chan kill >> return ()
-    
--- | A 'Task', with an initialization step 'init', that runs a controller 'action' until it emits a @Done@ event.
--- Note that the controller may publish more than one @Done@ event. The result type @DoneT action' is 'Either' of the @Done@ events published by the controller.
-task :: (Typeable feed,Typeable end,Published init,Controller action) => init -> action -> Task feed end
-task init action = Task init action
-    
--- | For a 'Task' with no initialization step.
-noInit :: ()
+
 noInit = ()
+noCleanup = ()
+
+-- | Default 'Task' options: no initialization and no cleanup.
+taskOpts = TaskOpts noInit noCancel
+    
+-- | A 'Task', that runs a controller 'action' until it emits a @Done@ event.
+task :: (Typeable feed,Typeable end,Published init,Controller action,Published cancel) => action -> TaskOpts init cancel -> Task feed end
+task action opts = Task action opts
     
 runTask :: Task feed1 end -> (feed1 -> Maybe feed2) -> Chan feed2 -> MVar (IO ()) -> UserNode end
-runTask (Task init action::Task feed1 end) feedfun feedchan kill = do
+runTask (Task action opts::Task feed1 end) feedfun feedchan kill = do
     initialized <- liftIO $ newEmptyMVar
     done <- liftIO $ newEmptyMVar
+    die <- liftIO $ newEmptyMVar
+    cancelv <- liftIO $ newEmptyMVar
     children <- forkNewUserNode $ do
         (endTopic,feedTopic) <- do
-            published (singleTopic $ return $ Just $ init) >>= lift . runHandler (\stm -> liftTIO $ atomically stm >>= putMVar initialized)
+            published (singleTopic $ return $ Just $ init opts) >>= lift . runHandler (\stm -> liftTIO $ atomically stm >>= putMVar initialized)
             liftIO $ takeMVar initialized
             controller action
             endTopic <- subscribedProxy (Proxy::Proxy (Done end))
             feedTopic <- subscribedProxy (Proxy::Proxy (Feedback feed1))
             return (endTopic,feedTopic)
+        let cancelTopic = Topic $ do
+                Cancel <- lift $ takeMVar cancelv
+                return (return $ Just $ cleanup opts,haltTopic)
+        published cancelTopic >>= lift . runHandler (\stm -> liftTIO $ atomically stm >>= putMVar die)
         _ <- lift $ flip runHandler endTopic $ \stm -> liftTIO $ atomically stm >>= putMVar done
         _ <- lift $ flip runHandler feedTopic $ \stm -> liftTIO $ atomically stm >>= \mb -> case (feedfun $ unFeedback mb) of
             Nothing -> return ()
             Just v -> writeChan feedchan v
         return ()
-    liftIO $ modifyMVar kill $ \m -> return (m >> killThreadHierarchy children,())
+    liftIO $ modifyMVar kill $ \m -> return (putMVar cancelv Cancel >> m >> takeMVar die >> killThreadHierarchy children,())
     Done end <- liftIO $ takeMVar done
     liftIO $ killThreadHierarchy children
     return end
@@ -84,20 +95,15 @@ runTask (BindTask (m::Task fa a) (f::a->Task fa b)) feedfun feedchan kill = do
 runTask (SubTask upcast (t1::Task f1 a)) feedfun feedchan kill = runTask t1 (feedfun <=< upcast) feedchan kill
 runTask (CoreTask n) feedfun feedchan kill = lift $ n
 
--- | For calling a 'Task' without the option to cancel it.
-noCancel :: () -> Maybe Cancel
-noCancel = const Nothing
+noCancel () = Nothing
+noFeedback _ = ()
+noResponse _ = ()
 
--- | For calling a 'Task' without listening to its feedback messages.
-noFeedback :: a -> ()
-noFeedback = const ()
+-- | Default 'call' options: no cancellation, no feedback and no response.
+callOpts = CallOpts noCancel noFeedback noResponse
 
--- | Call a 'Task' from a controller. Receives three additional functions:
---
--- * a function that allows the controller to cancel the 'Task' while in progress;
--- * a function that allows to publish 'Task' progress feedback 'Eithers feed' back to the controller as an event 'see';
--- * a function that publishes the result 'end' of the 'Task' as a controller event 'res'.
-call :: (Subscribed when,Published see,Published res) => Task feed end -> (when -> Maybe Cancel) -> (feed -> see) -> (end -> res) -> Call 
+-- | Call a 'Task' from a controller. 
+call :: (Subscribed when,Published see,Published res) => Task feed end -> CallOpts when feed see end res -> Call 
 call = Call
 
 data DynTopicSTM where
@@ -121,6 +127,7 @@ unsafeUnDynTopicSTM p (DynTopicSTM c) = unsafeCoerce c
 instance Published Call where
     published t = do
         callv :: TChan Call <- liftIO $ newTChanIO
+        threadv :: MVar ThreadId <- liftIO $ newEmptyMVar
         endv :: MVar (Map TypeRep DynChan) <- liftIO $ newMVar Map.empty
         feedv :: MVar (Map TypeRep DynChan) <- liftIO $ newMVar Map.empty
         whenv :: MVar (Map TypeRep DynTopicSTM) <- liftIO $ newMVar Map.empty
@@ -166,7 +173,7 @@ instance Published Call where
                         liftIO $ modifyMVar whenv $ \m -> return (Map.insert ty (DynTopicSTM whenTopic) m,())
                         return $ DynTopicSTM whenTopic
         let processCall :: Call -> UserNode ()
-            processCall (Call (task :: Task feed end) (whenCancel :: when -> Maybe Cancel) (see::feed -> see) (finish :: end -> res)) = do
+            processCall (Call (task :: Task feed end) (CallOpts (whenCancel :: when -> Maybe Cancel) (see::feed -> see) (finish :: end -> res))) = do
                 reschan <- liftM (unsafeUnDynChan (Proxy::Proxy res)) $ getRes (error "proxy"::res)
                 seechan <- liftM (unsafeUnDynChan (Proxy::Proxy see)) $ getSee (error "proxy"::see)
                 whent <- liftM (unsafeUnDynTopicSTM (Proxy::Proxy when)) $ getWhen (error "proxy"::when)
@@ -178,15 +185,21 @@ instance Published Call where
                             Nothing -> return ()
                             Just Cancel -> do
                                 cleanup <- takeMVar kill
+                                tid <- takeMVar threadv
+                                putStrLn $ "kill yourself " ++ show tid
                                 cleanup
-                                throw UserInterrupt
+                                killThread tid
                     runTask task (Just . see) seechan kill
                 liftIO $ writeChan reschan $ finish end
+                tid <- liftIO $ takeMVar threadv
+                liftIO $ killThread tid
         
         _ <- forkUserNodeIO $ do
             let rec = do
                     call <- liftIO $ atomically $ readTChan callv
-                    processCall call
+                    tid <- forkUserNodeIO $ processCall call
+                    liftIO $ putStrLn $ "call " ++ show tid
+                    liftIO $ putMVar threadv tid
                     rec
             rec
         return $ flip fmap t $ \stm -> do
@@ -204,7 +217,7 @@ instance Typeable a => Published (PDone a) where
 
 -- | Run two 'Task's in parallel
 parallel :: (Typeable f1,Typeable f2,Typeable a,Typeable b) => Task f1 a -> Task f2 b -> Task (Either f1 f2) (a,b)
-parallel (t1::Task f1 a) (t2::Task f2 b) = task (call t1 Just refeed1 PDone,call t2 Just refeed2 PDone) done
+parallel (t1::Task f1 a) (t2::Task f2 b) = task done $ TaskOpts (call t1 (CallOpts Just refeed1 PDone),call t2 (CallOpts Just refeed2 PDone)) ()
     where
     done :: PDone a -> PDone b -> Done (a,b)
     done (PDone a) (PDone b) = Done (a,b)
@@ -218,7 +231,7 @@ parallel_ t1 t2 = subTask (const Nothing) (parallel t1 t2)
 
 -- | Run two 'Task's in parallel and stop when first finishes
 race :: (Typeable f1,Typeable f2,Typeable a,Typeable b) => Task f1 a -> Task f2 b -> Task (Either f1 f2) (Either a b)
-race (t1::Task f1 a) (t2::Task f2 b) = task (call t1 Just refeed1 PDone,call t2 Just refeed2 PDone) (done1,done2)
+race (t1::Task f1 a) (t2::Task f2 b) = task (done1,done2) $ TaskOpts (call t1 (CallOpts Just refeed1 PDone),call t2 (CallOpts Just refeed2 PDone)) ()
     where
     done1 :: PDone a -> Done (Either a b)
     done1 (PDone a) = Done $ Left a

@@ -45,17 +45,28 @@ import Unsafe.Coerce
 import System.IO.Unsafe
 import GHC.Conc
 
+data TaskOpts init cancel = TaskOpts
+    { init :: init -- ^ task initialization step, that occurs only once
+    , cleanup :: cancel -- ^ task cleanup on 'Cancel'
+    }
+
 -- | A 'Task' is a monadic 'Effect' that can be composed sequentially, in the sense that a task will only start after the previous task has finished.
 data Task feed end where
-    Task :: (Typeable feed,Typeable end,Published init,Controller action) => init -> action -> Task feed end
+    Task :: (Typeable feed,Typeable end,Published init,Controller action,Published cancel) => action -> TaskOpts init cancel -> Task feed end
     RetTask :: a -> Task f a
     BindTask :: Task fa a -> (a -> Task fa b) -> Task fa b
     SubTask :: (Typeable f1) => (f1 -> Maybe f2) -> Task f1 a -> Task f2 a
     CoreTask :: Node a -> Task f a
     
+data CallOpts when feed see end res = CallOpts
+    { cancel :: when -> Maybe Cancel -- ^ a function that allows the controller to cancel the 'Task' while in progress
+    , feedback :: feed -> see -- ^ a function that allows to publish 'Task' progress feedback 'Eithers feed' back to the controller as an event 'see'
+    , response :: end -> res -- ^ a function that publishes the result 'end' of the 'Task' as a controller event 'res'
+    }
+    
 -- | The type of 'Task' 'call's inside controllers.
 data Call where
-    Call :: (Subscribed when,Published see,Published res,Typeable when,Typeable see,Typeable res) => Task feed end -> (when -> Maybe Cancel) -> (feed -> see) -> (end -> res) -> Call 
+    Call :: (Subscribed when,Published see,Published res,Typeable when,Typeable see,Typeable res) => Task feed end -> CallOpts when feed see end res -> Call 
     
 instance Monad (Task feed) where
     return = RetTask
@@ -86,7 +97,7 @@ instance Subscribed Cancel where
 instance Published Cancel where
     published = publishedEvent
   
--- | A type-level tag that allows a 'Task' controller to publish feed messages.
+-- | A type-level tag that allows a 'Task' controller to publish feedback messages.
 data Feedback a = Feedback { unFeedback :: a }
   deriving (Show,Eq,Ord,Typeable)
 instance Typeable a => Subscribed (Feedback a) where

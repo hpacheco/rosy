@@ -198,7 +198,7 @@ module Rosy
     --
     -- | Read or change the background color. Note that after a change, Turtlesim will only update background color with the execution of certain tasks.
     --
-    , Background(..), Color(..)
+    , Background(..), Color(..), black, red, green, blue, white
     --
     {-|
     -}
@@ -257,9 +257,9 @@ module Rosy
     --
     -- | You can also control your robot by sequencing tasks.
     --
-    , task, subTask, Done(..), noInit
+    , task, TaskOpts(..), taskOpts, noInit, noCleanup, subTask, Done(..), once
     , Task --,DoneT
-    , call, Call, Cancel(..), noCancel, Feedback(..), noFeedback,say
+    , call, Call, CallOpts(..), callOpts, noCancel, noFeedback, noResponse, Cancel(..), Feedback(..), say
     , parallel, parallel_, race, race_
     --
     -- | You can compose and create new tasks to better control your robot simulations.
@@ -305,7 +305,7 @@ module Rosy
     --
     -- * Utilities
     -- ** Geometry functions.
-    , Degrees(..)
+    , Degrees(..),Radians(..)
     , degreesToOrientation, orientationToDegrees, normOrientation
     , Centimeters(..), Meters(..)
     , centimetersToMeters, metersToCentimeters
@@ -332,7 +332,7 @@ import Rosy.Interface
 import Rosy.Interface.Task
 import Rosy.Interface.Task.Types
 import Rosy.Util
-import Prelude hiding ((>>),(>>=),return,fail)
+import Prelude hiding ((>>),(>>=),return,fail,init)
 import Data.Time.Clock
 import System.Random
 

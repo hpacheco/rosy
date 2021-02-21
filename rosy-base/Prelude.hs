@@ -11,7 +11,7 @@ module Prelude
   , Generic1(..)
   ) where
 
-import "base" Prelude as General hiding ((>>=),(>>),return,fail)
+import "base" Prelude as General hiding ((>>=),(>>),return,fail,init)
 import Rosy 
 import Rosy.Controller.Core (Published(..),Subscribed(..),publishedEvent,subscribedEvent,publishedMemory,subscribedMemory)
 import Data.Default.Generics (Default(..))

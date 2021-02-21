@@ -1,4 +1,6 @@
 module Rosy.Util where
+    
+import Data.Fixed
 
 type DPoint = (Double,Double)
 type DVector = DPoint
@@ -10,6 +12,12 @@ radiansToDegrees a = 180 * a / pi
 -- | Converts an angle in degrees to radians.
 degreesToRadians :: Floating a => a -> a
 degreesToRadians rads = rads * pi / 180
+
+-- | Normalizes an angle in radians to a positive or negative value between '0' and 'pi' radians.
+normRadians :: (Real a,Floating a) => a -> a
+normRadians o = norm2 $ mod' o (2 * pi)
+    where
+    norm2 a = if a >= pi then - 2 * pi + a else a
 
 -- | Rounds a floating-point number down to the closest integer.
 floorFloating :: RealFrac a => a -> a
