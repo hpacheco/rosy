@@ -188,7 +188,7 @@ instance Published Call where
                             Just Cancel -> do
                                 cleanup <- takeMVar kill
                                 tid <- takeMVar threadv
-                                putStrLn $ "kill yourself " ++ show tid
+                                --putStrLn $ "kill yourself " ++ show tid
                                 cleanup
                                 killThread tid
                     runTask task (Just . see) seechan kill
@@ -200,7 +200,7 @@ instance Published Call where
             let rec = do
                     call <- liftIO $ atomically $ readTChan callv
                     tid <- forkUserNodeIO $ processCall call
-                    liftIO $ putStrLn $ "call " ++ show tid
+                    --liftIO $ putStrLn $ "call " ++ show tid
                     liftIO $ putMVar threadv tid
                     rec
             rec

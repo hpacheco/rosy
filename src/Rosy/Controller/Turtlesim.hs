@@ -165,7 +165,7 @@ instance Published (AnyTurtle Velocity) where
 
 -- * Turtlesim publications (see the robot's state)
 
--- ** Odometry
+-- ** Pose
 
 instance IsTurtleNumber n => Subscribed (Turtle n Pose) where
     subscribedProxy (Proxy :: Proxy (Turtle n Pose)) = subscribedROS $ do

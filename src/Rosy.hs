@@ -103,6 +103,12 @@ module Rosy
     -- * Its current orientation.
     , Orientation(..)
     --
+    --
+    -- | 
+    --
+    -- * Its current pose (@Position@ and @Orientation@).
+    , Pose(..), poseOrientation, posePosition
+    --
     -- |
     --
     -- * Its current velocity.
@@ -324,6 +330,7 @@ import Rosy.Controller.Time
 import Rosy.Controller.Core
 import Rosy.Controller.Kobuki
 import Rosy.Controller.Turtlesim
+import Ros.Turtlesim.Pose as Pose
 import Rosy.Robot.Kobuki.Core
 import Rosy.Robot.Kobuki.State
 import Rosy.Viewer.Kobuki.Core
