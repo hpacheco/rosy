@@ -117,7 +117,9 @@ runRobotPhysics st = liftIO $ do
         let px'' = truncateCoord px'
         let py'' = truncateCoord py'
         
-        writeTVar (_robotPose st) $ Pose px'' py'' rads' (vlin') (vrot')
+        let pose = Pose px'' py'' rads' (vlin') (vrot')
+        writeTVar (_robotPose st) pose
+        writeTChan (_robotPoseChan st) pose
         
         pen <- readTVar (_robotPen st)
         when (Pen._off pen == 0) $ do
@@ -131,7 +133,7 @@ runRobotPhysics st = liftIO $ do
     
 writeRobotPose :: RobotState -> Node ()
 writeRobotPose st = do
-    advertise ("turtle" ++ show (_robotId st) </> "pose") $ topicRate defaultRate $ repeatM $ liftTIO $ atomically $ readTVar (_robotPose st)
+    advertise ("turtle" ++ show (_robotId st) </> "pose") $ topicRate defaultRate $ repeatM $ liftTIO $ atomically $ readTChan (_robotPoseChan st) 
   where
     liftTIO :: IO a -> TIO a
     liftTIO = liftIO

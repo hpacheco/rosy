@@ -139,29 +139,31 @@ instance D.Default a => D.Default (AnyTurtle a) where
 instance IsTurtleNumber n => Published (Turtle n Velocity) where
     publishedProxy (Proxy :: Proxy (Turtle n Velocity)) = publishedROS (advertise (turtleString' (Proxy::Proxy n) </> "cmd_vel") . fmap (velocityToROS . unTurtle))
     
-interleaves :: [Topic TIO a] -> Topic TIO a
-interleaves [] = haltTopic
+interleaves :: Monad m => [Topic TIO (m ())] -> Topic TIO (m ())
+--interleaves [] = haltTopic
 interleaves [t] = t
-interleaves (t:ts) = fmap (either id id) (t <+> interleaves ts)
+interleaves (t1:ts) = mergeT t1 $ interleaves ts
     
 instance Published (AnyTurtle Velocity) where
     published t = do
         (Map.fromList -> chans,pubs) <- liftM unzip $ forM [1..9] $ \i -> do
-            chan :: Chan Velocity <- liftIO $ newChan
-            let chanTopic = Topic $ do
-                    x <- lift $ readChan chan
-                    return (return $ Just x,chanTopic)
+            chan :: TChan Velocity <- liftIO $ newTChanIO
+            --let chanTopic = Topic $ do
+            --        x <- lift $ atomically $ readTChan chan
+            --        return (return $ Just x,chanTopic)
+            let chanTopic = Topic.repeat $ tryReadTChan chan
             pub <- publishedROS (advertise ("turtle"++show i </> "cmd_vel") . fmap velocityToROS) chanTopic
             return ((i,chan),pub)
-        lift $ flip runHandler t $ \smt -> liftIO $ do
-            mb <- atomically smt
-            case mb of
-                Nothing -> return ()
-                Just (AnyTurtle i v) -> do
-                    case Map.lookup i chans of
-                        Nothing -> return ()
-                        Just chan -> liftIO $ writeChan chan v
-        return $ interleaves pubs
+        let t' = flip fmap t $ \smt -> do
+--        lift $ flip runHandler t $ \smt -> liftIO $ atomically $ do
+                mb <- smt
+                case mb of
+                    Nothing -> return ()
+                    Just (AnyTurtle i v) -> do
+                        case Map.lookup i chans of
+                            Nothing -> return ()
+                            Just chan -> writeTChan chan v
+        return $ mergeT t' $ interleaves pubs
 
 -- * Turtlesim publications (see the robot's state)
 

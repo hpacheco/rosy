@@ -44,6 +44,7 @@ import System.FilePath
 data RobotState = RobotState
     { _robotVel       :: TVar (Twist,UTCTime) -- desired velocity
     , _robotPose      :: TVar Pose
+    , _robotPoseChan  :: TChan Pose
     , _robotPen       :: TVar SetPenRequest 
     , _robotId        :: Int
     , _robotName      :: TVar String
@@ -89,12 +90,13 @@ newRobotState (i,pic) = do
     atomically $ do
         vel <- newTVar $ D.def
         pose <- newTVar $ Pose (250/45) (250/45) 0 0 0
+        posechan <- newTChan
         let (r,g,b,a) = rgbaOfColor penColor
         pen <- newTVar $ SetPenRequest (toEnum $ round $ r * 255) (toEnum $ round $ g * 255) (toEnum $ round $ b * 255) 3 0
         path <- newTVar ([],DList.empty)
         onoff <- if i==1 then newTMVar () else newEmptyTMVar
         name <- newTVar ("turtle"++show i)
-        return $ RobotState vel pose pen i name img path onoff
+        return $ RobotState vel pose posechan pen i name img path onoff
 
 resetRobotState :: RobotState -> IO ()
 resetRobotState st = do
@@ -115,13 +117,14 @@ killRobotState st = do
         writeTVar (_robotPose st) $ Pose (250/45) (250/45) 0 0 0
         let (r,g,b,a) = rgbaOfColor penColor
         writeTVar (_robotPen st) $ SetPenRequest (toEnum $ round $ r * 255) (toEnum $ round $ g * 255) (toEnum $ round $ b * 255) 3 0
-        takeTMVar (_robotOn st)
+        tryTakeTMVar (_robotOn st)
         writeTVar (_robotName st) $ "turtle"++show (_robotId st)
 
 spawnRobotState :: Pose -> String -> RobotState -> IO (String)
 spawnRobotState pose name st = do
     atomically $ do
         writeTVar (_robotPose st) pose
+        tryTakeTMVar (_robotOn st)
         putTMVar (_robotOn st) ()
         if (List.null name)
             then readTVar (_robotName st)

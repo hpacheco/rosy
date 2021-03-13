@@ -370,6 +370,11 @@ mergeT t1 t2 = Topic $ do
 instance Published Say where
     published = publishedROS $ \t -> runHandler_ (\(Say str) -> liftIO $ reportMessage str) t
 
+
+readTChanTopic :: TChan a -> Topic TIO (STM (Maybe a))
+readTChanTopic chan = Topic $ do
+    return (liftM Just $ readTChan chan,readTChanTopic chan)
+
 instance (Published a,Published b) => Published (a,b) where
     published tab = do
         chan1 <- liftIO $ newTChanIO 
@@ -379,6 +384,8 @@ instance (Published a,Published b) => Published (a,b) where
                 Just (a,b) -> writeTChan chan1 a >> writeTChan chan2 b
         let ta = Topic.repeat $ tryReadTChan chan1
         let tb = Topic.repeat $ tryReadTChan chan2
+        --let ta = readTChanTopic chan1
+        --let tb = readTChanTopic chan2
         ta' <- published ta
         tb' <- published tb
         return $ mergeT t' (mergeT ta' tb')
@@ -414,6 +421,8 @@ instance (Published a,Published b) => Published (Either a b) where
                 Just (Right b) -> writeTChan chan2 b
         let ta = Topic.repeat $ tryReadTChan chan1
         let tb = Topic.repeat $ tryReadTChan chan2
+        --let ta = readTChanTopic chan1
+        --let tb = readTChanTopic chan2
         ta' <- published ta
         tb' <- published tb
         return $ mergeT t' (mergeT ta' tb')
