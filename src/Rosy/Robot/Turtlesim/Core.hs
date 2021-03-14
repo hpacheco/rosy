@@ -133,7 +133,7 @@ runRobotPhysics st = liftIO $ do
     
 writeRobotPose :: RobotState -> Node ()
 writeRobotPose st = do
-    advertise ("turtle" ++ show (_robotId st) </> "pose") $ topicRate defaultRate $ repeatM $ liftTIO $ atomically $ readTChan (_robotPoseChan st) 
+    advertise ("turtle" ++ show (_robotId st) </> "pose") $ {-topicRate defaultRate $ -}repeatM $ liftTIO $ atomically $ readTChan (_robotPoseChan st) 
   where
     liftTIO :: IO a -> TIO a
     liftTIO = liftIO
